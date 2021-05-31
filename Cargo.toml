@@ -1,6 +1,6 @@
 [package]
 name = "sprite_animation"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["PhaestusFox <phaestusfox@gmail.com>"]
 edition = "2018"
 
@@ -8,5 +8,7 @@ edition = "2018"
 
 [dependencies]
 bevy = "0.5"
-ron = "0.6.4"
-serde = "*"
+
+[features]
+default = []
+node_trace = []

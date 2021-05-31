@@ -1,195 +1,325 @@
-use std::{collections::HashMap, usize};
+use super::core_new::AnimationState;
+use super::core_new::{NodeBuild,NodeCore};
+use super::core_new::NodeResult;
+use super::core_new::DataType;
+use super::core_new::Cell;
+use super::prelude::*;
 
 use bevy::prelude::*;
-use super::core::*;
 
-pub struct BasicNode{
-    pub name : &'static str,
-    pub driver : String,
-    pub auto_increment : bool,
-    pub cells : Vec<Cell>,
-    pub modifyers : HashMap<String, DataType>,
-    pub frame_rate : usize,
+use std::collections::HashMap;
+
+#[doc(hidden)]
+pub struct TestNode{
+    name : String,
+    results : Vec<NodeResult>,
+    mods : Vec<(String, DataType)>,
 }
 
-impl AnimationNode for BasicNode{
-    fn run(&self, animation_state : &mut AnimationState) {
-        let mut index = match animation_state.get(&self.driver.clone()) {
-            Some(i) => match i {
-                DataType::Usize(i) => {*i},
-                _ => 0
-            },
-            None => {animation_state.set(self.driver.clone(), DataType::Usize(0)); 0}
-        };
-        for (name,value) in self.modifyers.iter(){
-            animation_state.set(name.clone(),value.clone());
-        }
-        if self.auto_increment {
-            let t = if let DataType::F64(t) = animation_state.get(&"TIME".to_string()).unwrap(){
-                *t
-            } else {panic!("TIME feld in animation_state not set");};
-            let frames = (self.frame_rate as f64 * t).floor();
-            animation_state.set("TIME".to_string(),DataType::F64(t - 1.0/self.frame_rate as f64 * frames));
-            index = (index + frames as usize) % self.cells.len();
-
-            animation_state.set(self.driver.clone(), DataType::Usize(index));
-        }
-        if index < self.cells.len() {
-            self.cells[index].run(animation_state);
-            animation_state.set_next(NodeResult::Frame(self.cells[index].frame.clone()));
-        } else {
-            self.cells[0].run(animation_state);
-            animation_state.set_next(NodeResult::Frame(self.cells[index].frame.clone()));
-        }
-    }
-    fn get_name(&self) -> &'static str{
-        self.name
-    }
-}
-
-pub struct BasicNodeBuilder{
-    pub name : &'static str,
-    pub driver : String,
-    pub sprite_sheet_path : String,
-    pub auto_increment : bool,
-    pub start_frame : usize,
-    pub last_frame : usize,
-    pub modifyers : Vec<(String, DataType)>,
-    pub frame_rate : usize,
-    pub sprite_size : Vec2,
-    pub sprite_sheet_size : (usize,usize),
-    sprite_sheet_handel : Option<Handle<TextureAtlas>>
-}
-
-impl NodeBuilder for BasicNodeBuilder{
-    fn build(self : Box<Self>, _node_tree : &mut NodeTree) -> Box<dyn AnimationNode> {
-        let modifyers = self.modifyers.iter().cloned().collect();
-        let mut cells = Vec::new();
-        let (true_start, true_end) = 
-        if self.start_frame > self.last_frame {println!("Start({}) is begger then end({}) inverting", self.start_frame, self.last_frame); (self.last_frame,self.start_frame)}
-        else {(self.start_frame,self.last_frame)};
-        if let Some(texture_atles_handle) = self.sprite_sheet_handel {
-            for i in true_start..=true_end{
-                cells.push(
-                    Cell{
-                        frame : Frame {sprite_index : i, sprite_sheet : texture_atles_handle.clone()},
-                        modifyers : HashMap::new()
-                    }
-                );
+impl TestNode{
+    pub fn new(name : &str) -> Box<dyn NodeCore>{
+        Box::new(
+            TestNode{
+                name : format!("{}",name),
+                results : vec![
+                NodeResult::Test{message : format!("this is {}'s 0th path; this -> next;", name),next : format!("test_next_{}",name)},
+                NodeResult::Test{message : format!("this is {}'s 1st path; this -> alt;", name),next : format!("test_alt_{}",name)},
+                NodeResult::Test{message : format!("this is {}'s 2nd path; this -> temp;", name),next : format!("test_temp_{}",name)},
+                NodeResult::Test{message : format!("this is {}'s 3rd path; this -> temp;", name),next : format!("test_temp_{}", name)},
+                NodeResult::Test{message : format!("this is {}'s 4th path; this -> ?;", name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}'s 5th path; this -> ?;", name),next : format!("test_error")}],
+                mods : vec![],
             }
-        } else {panic!("the node was never loaded and you are now trying to build it; use self.load() and try again")}
-        Box::new(BasicNode{
-            name : self.name,
-            driver : self.driver,
-            auto_increment : self.auto_increment,
-            cells,
-            modifyers,
-            frame_rate : self.frame_rate
-        })
+        )
     }
 
-    fn is_loaded(&self) -> bool{
-        if let Some(_) = self.sprite_sheet_handel{
-            return true
-        }
-        false
+    pub fn new_next(name : &str) -> Box<dyn NodeCore>{
+        const TEST_TYPE : &'static str = "next";
+        Box::new(
+            TestNode{
+                name : format!("test_next_{}",name),
+                results : vec![
+                NodeResult::Frame(Frame{index : 0, ..Default::default()}),
+                NodeResult::Test{message : format!("this is {}_{}'s 1st path; this -> ?;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 2nd path; this -> ?;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 3rd path; this -> ?;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 4th path; this -> ?;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 5th path; this -> ?;",TEST_TYPE, name),next : format!("test_error")}],
+                mods : vec![("alt".to_string(), true.into())],
+            }
+        )
     }
 
-    fn get_name(&self) -> &'static str {
-        self.name
+    pub fn new_alt(name : &str) -> Box<dyn NodeCore>{
+        const TEST_TYPE : &'static str = "alt";
+        Box::new(
+            TestNode{
+                name : format!("test_alt_{}",name),
+                results : vec![
+                NodeResult::Test{message : format!("this is {}_{}'s 0th path; this -> ?;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Frame(Frame{index : 1, ..Default::default()}),
+                NodeResult::Frame(Frame{index : 2, ..Default::default()}),
+                NodeResult::Test{message : format!("this is {}_{}'s 3rd path; this -> ?;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 4th path; this -> ?;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 5th path; this -> ?;",TEST_TYPE, name),next : format!("test_error")}],
+                mods : vec![("temp".to_string(), true.into())],
+            }
+        )
     }
 
-    fn deserialize(&mut self) -> bool {
-        todo!()
+    pub fn new_temp(name : &str) -> Box<dyn NodeCore>{
+        const TEST_TYPE : &'static str = "temp";
+        Box::new(
+            TestNode{
+                name : format!("test_temp_{}",name),
+                results : vec![
+                NodeResult::Test{message : format!("this is {}_{}'s 0th path; this -> ?; set alt = false;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 1st path; this -> ?; set alt = false;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Frame(Frame{index : 3, ..Default::default()}),
+                NodeResult::Test{message : format!("this is {}_{}'s 3rd path; this -> alt; set alt = false;",TEST_TYPE, name),next : format!("test_alt_{}",name)},
+                NodeResult::Test{message : format!("this is {}_{}'s 4th path; this -> ?; set alt = false;",TEST_TYPE, name),next : format!("test_error")},
+                NodeResult::Test{message : format!("this is {}_{}'s 5th path; this -> ?; set alt = false;",TEST_TYPE, name),next : format!("test_error")}],
+                mods : vec![("alt".to_string(), false.into())],
+            }
+        )
+    }
+    pub fn error() -> Box<dyn NodeCore>{
+        const TEST_TYPE : &'static str = "error";
+        let name = format!("an error");
+        Box::new(
+            TestNode{
+                name : format!("test_error"),
+                results : vec![
+                NodeResult::Error(format!("this is {}_{}'s 0th path",TEST_TYPE, name)),
+                NodeResult::Error(format!("this is {}_{}'s 1st path",TEST_TYPE, name)),
+                NodeResult::Error(format!("this is {}_{}'s 2nd path",TEST_TYPE, name)),
+                NodeResult::Error(format!("this is {}_{}'s 3rd path",TEST_TYPE, name)),
+                NodeResult::Error(format!("this is {}_{}'s 4th path",TEST_TYPE, name)),
+                NodeResult::Error(format!("this is {}_{}'s 5th path",TEST_TYPE, name)),],
+                mods : vec![],
+            }
+        )
     }
 }
 
-impl BasicNodeBuilder{
-    pub fn new(name : &'static str, driver : String, auto_increment : bool, frame_rate : usize, start_index : usize, end_index : usize, sprite_sheet_path : String, sprite_size : Vec2, sprite_sheet_size : (usize,usize), modifyers : Vec<(String, DataType)>) -> Self
-    {
-        BasicNodeBuilder{
-            name,
-            driver,
-            auto_increment,
-            frame_rate,
-            start_frame : start_index,
-            last_frame : end_index,
-            sprite_sheet_path,
-            sprite_size,
-            sprite_sheet_size,
-            modifyers,
-            sprite_sheet_handel : None,
-        }
+impl NodeCore for TestNode{
+    fn get_name(&self) -> &str {
+        &self.name
     }
-}
 
-struct SwitchNode{
-    pub name : &'static str,
-    pub driver : String,
-    pub true_node : usize,
-    pub false_node : usize,
-    pub modifyers : HashMap<String, DataType>,
-    pub fallback_node : usize,
-}
-
-impl AnimationNode for SwitchNode{
     fn run(&self, animation_state : &mut AnimationState) {
-        if let Some(DataType::Bool(g)) = animation_state.get(&self.driver) {
-            if *g { animation_state.set_next(NodeResult::NodeID(self.true_node));}
-            else { animation_state.set_next(NodeResult::NodeID(self.false_node));}
-        } else {
-            animation_state.set_next(NodeResult::NodeID(self.fallback_node));
+        let mut res = 0;
+        if animation_state.get::<bool>("alt").unwrap_or(false){
+            res += 1;
+        }
+        if animation_state.get::<bool>("temp").unwrap_or(false){
+            res += 2;
+        }
+        for (name, value) in self.mods.iter(){
+            println!("{} is setting {}", self.name, name);
+            animation_state.set(name, value.clone());
+        }
+        animation_state.set_next(self.results[res].clone())
+    }
+
+    fn print(&self) {
+        todo!();
+    }
+}
+
+impl NodeBuild for TestNode{
+    fn build(self : Box<Self>, _world : &bevy::ecs::world::WorldCell) -> Box<dyn NodeCore> {
+        todo!();
+    }
+}
+
+
+///this is a node that holds an id open with a sesific name;
+///was added so that nodes can be built without all the down stream nodes needing to exist when it is made
+pub(crate) struct VoidNode(pub(crate) String);
+
+impl VoidNode{
+    pub(crate) fn new(name : &str) -> Box<dyn NodeCore>{
+        Box::new(
+            VoidNode(name.to_string())
+        )
+    }
+}
+
+impl NodeCore for VoidNode{
+    fn get_name(&self) -> &str {
+        &self.0
+    }
+    fn run(&self, animation_state : &mut AnimationState){
+        animation_state.set_next(NodeResult::Error(format!("Tried to run the void node {}", self.0)))
+    }
+    fn print(&self){
+        println!("void node called {}", self.0);
+    }
+}
+
+/**
+A simple node that just pics the Cell in its cells vec with the index of its driver in the state peramiters
+# Plz Help
+    this node is sort of a place holder prof of concept node that i will probably re-write at some point;
+    plz provide feedback on any nodes that you want added this one is extreamly simple but also powerful simply becuse it can fully drive the state its self
+    allowing for more complex builders to use this basic node and make diffrent types of node without even changing this one eg and auto_incrementing node
+    would just be a basic node where the builder automaticly fills in the cell modifyers to set the driver to the next cell --Will Definitly be remaking it tho
+    its way to hard to get spesific behaviers out of it without needing to hardcode every cell
+    am thinging a hashmap with the cell modifyes and a vec of frames to get the same result but you would easily be able to auto generate the frames and then overrided just
+    spesific hashmap modiyers instead of hardcoding all the frames just the ones you override 
+*/
+pub struct BasicNode{
+    pub name : String,
+    pub driver : String,
+    pub cells : Vec<Cell>,
+    pub modifyers : Vec<(String, DataType)>,
+}
+
+impl NodeCore for BasicNode{
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn run(&self, animation_state : &mut AnimationState) {
+        let index = if let Some(index) = animation_state.get::<usize>(&self.driver) {index} else {0};
+        if index >= self.cells.len() {animation_state.set_next(NodeResult::Error(format!("Index {} bigger then cells.len {}", index, self.cells.len()))); return;}
+        
+        for (name, value) in self.modifyers.iter(){
+            animation_state.set(name, value.clone());
+        }
+
+        let res = &self.cells[index];
+
+        for (name, value) in res.modifyers.iter(){
+            animation_state.set(name, value.clone());
+        }
+
+        animation_state.set_next(NodeResult::Frame(res.frame.clone()))
+    }
+
+    fn print(&self){
+        println!("basic node called {}", self.get_name());
+    }
+}
+
+/**
+A simple switch node that will go to node A if Condishon is true Or node B if its false Or node C If something breaks i.e. the condishon was never set
+*/
+pub struct SwitchNode{
+    pub name : String,
+    pub driver : String,
+    pub true_node : NodeResult,
+    pub false_node : NodeResult,
+    pub fallback_node : NodeResult,
+    pub modifyers : Vec<(String, DataType)>
+}
+
+impl NodeCore for SwitchNode{
+    fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    fn run(&self, animation_state : &mut AnimationState) {
+        if let Some(drive) = animation_state.get::<bool>(&self.driver){
+            if drive {
+                animation_state.set_next(self.true_node.clone())
+            }
+            else{
+                animation_state.set_next(self.false_node.clone())
+            }
+        }else{
+            animation_state.set_next(self.fallback_node.clone())
+        }
+        for (name, value) in self.modifyers.iter(){
+            animation_state.set(name, value.clone());
         }
     }
-
-    fn get_name(&self) -> &'static str {
-        self.name
+    fn print(&self){
+        println!("switch node called {}", self.get_name());
     }
 }
 
-pub struct SwitchNodeBuilder{
-    pub name : &'static str,
+/**
+ A simple spritesheetnodebuilder will create a basic node out of the given infromation about the sprite sheet
+ # Arguments
+    `name` -String the name of the node<br>
+    `driver` -String the peramiter used by the resulting node to pic a cell<br>
+    `path` -String the path given to the AssetServer to load the sprite sheet<br>
+    `tile_size` -Vec2 the size or the tiles give to the TextureAtles::from_grid()<br>
+    `sprite_sheet_size` -(usize,usize) the number of colums and rows given to the TextureAtles::from_grid()<br>
+    `start_index` -u32 the index of the first frame on the TextureAtles<br>
+    `end_index` -u32 the index of the last fream on the TextureAtles<br>
+    `auto_inc` -bool wether or not to make each cell point to the next cell automaticly<br>
+    `cell_mods` -HashMap<usize,Vec<(String,DataType)>> a hashmap with the modiyers for each cell Key is the cells index and the value is a Vec<(String,DataType)> that is added to the coresponding cell<br>
+ # Example
+ ```
+ SpriteSheetNodeBuilder{
+        name : IDLENODE.to_string(),
+        driver : "idle".to_string(),
+        path : "test.png".to_string(),
+        tile_size : Vec2::splat(60.0),
+        sprite_sheet_size : (3,3),
+        start_index : 0,
+        end_index : 2,
+        auto_inc : true,
+        cell_mods : HashMap::new(),
+        node_mods : Vec::new()
+    }
+    ```
+    */
+pub struct SpriteSheetNodeBuilder{
+    pub name : String,
     pub driver : String,
-    pub true_node : &'static str,
-    pub false_node : &'static str,
-    pub modifyers : Vec<(String, DataType)>,
-    pub fallback_node : &'static str
+    pub path : String,
+    pub tile_size : Vec2,
+    pub sprite_sheet_size : (usize,usize),
+    pub start_index : u32,
+    pub end_index : u32,
+    pub auto_inc : bool,
+    pub cell_mods : HashMap<usize,Vec<(String,DataType)>>,
+    pub node_mods : Vec<(String,DataType)>,
 }
 
-impl NodeBuilder for SwitchNodeBuilder{
-    fn build(self : Box<Self>, node_tree : &mut NodeTree) -> Box<dyn AnimationNode> {
-        let true_node = node_tree.get_or_insert_id(self.true_node);
-        let false_node = node_tree.get_or_insert_id(self.false_node);
-        let fallback_node = node_tree.get_or_insert_id(self.fallback_node);
-        let modifyers = self.modifyers.iter().cloned().collect();
-        Box::new(SwitchNode{
-            name : self.name,
-            driver : self.driver,
-            true_node,
-            false_node,
-            modifyers,
-            fallback_node
-        })
-    }
-    fn is_loaded(&self) -> bool {
-        true
-    }
+impl NodeBuild for SpriteSheetNodeBuilder{
+    fn build(mut self : Box<Self>, world : &bevy::ecs::world::WorldCell) -> Box<dyn NodeCore> {
+        let mut cells = Vec::new();
+        let asset_server = world.get_resource::<AssetServer>().expect("failed to get AssetServer");
+        let texture = asset_server.load(&self.path[..]);
+        let texture_atlas = world.get_resource_mut::<Assets<TextureAtlas>>().expect("failed to get Assets<TextureAtlas>").add(
+            TextureAtlas::from_grid(texture, self.tile_size, self.sprite_sheet_size.0, self.sprite_sheet_size.1)
+        );
+        let mut i = 0;
+        let cell_count = self.end_index - self.start_index;
+        for index in self.start_index..=self.end_index {
+            let mut cell = Cell{
+                frame : Frame{
+                    index,
+                    sprite_sheet : texture_atlas.clone(),
+                    ..Default::default()
+                },
+                modifyers : if let Some(mods) = self.cell_mods.remove(&i){
+                    mods
+                } else { Vec::new() },
+            };
+            if self.auto_inc { 
+                if i == cell_count as usize {
+                    cell.modifyers.push((self.driver.clone(), DataType::Usize(0)));
+                }
+                else {cell.modifyers.push((self.driver.clone(), DataType::Usize(i+1)))}
+            }
+            println!("count = {}; \ncell = {:?}", i, cell);
+            cells.insert(i,cell);
+            i += 1;
+        }
 
-    fn get_name(&self) -> &'static str {
-        self.name
-    }
-
-    fn deserialize(&mut self) -> bool {
-        todo!()
-    }
-}
-
-impl BasicNodeBuilder{
-    pub fn load(mut self, asset_server : &Res<AssetServer>, texture_atlas : &mut ResMut<Assets<TextureAtlas>>) -> Box<dyn NodeBuilder>{
-        let texture_handle = asset_server.load(&self.sprite_sheet_path[..]);
-        let texture_at = TextureAtlas::from_grid(texture_handle, self.sprite_size, self.sprite_sheet_size.0, self.sprite_sheet_size.1);
-        let texture_atlas_handle = texture_atlas.add(texture_at);
-        self.sprite_sheet_handel = Some(texture_atlas_handle);
-        Box::new(self)
+        Box::new(
+            BasicNode{
+                name : self.name,
+                driver : self.driver,
+                cells,
+                modifyers : self.node_mods,
+            }
+        )
     }
 }
