@@ -269,7 +269,7 @@ impl Animator{
                 match self.animation_state.get_next_node() {
                     NodeResult::Frame(f) => {_ret = f.clone(); break;}
                     NodeResult::NodeID(id) => {node_tree.nodes[*id].run(&mut self.animation_state)},
-                    NodeResult::NodeName(name) => {node_tree.nodes[node_tree.get_id(&name).expect("Tried to get node that does not exist")].run(&mut self.animation_state)},
+                    NodeResult::NodeName(name) => {node_tree.nodes[node_tree.get_id(&name).expect(&format!("Tried to get node {} that does not exist", name))].run(&mut self.animation_state)},
                     NodeResult::Error(e) => {println!("{}",e); return self.error_frame.clone()},
                     NodeResult::Test{message: messages, next} => {println!("{}", messages); node_tree.nodes[node_tree.get_id(&next).expect("Tried to get node that does not exist")].run(&mut self.animation_state)},
                     NodeResult::Null => {println!("Root Node was never set");return self.error_frame.clone();}

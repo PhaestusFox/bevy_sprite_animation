@@ -308,7 +308,7 @@ impl NodeBuild for SpriteSheetNodeBuilder{
                 }
                 else {cell.modifyers.push((self.driver.clone(), DataType::Usize(i+1)))}
             }
-            println!("count = {}; \ncell = {:?}", i, cell);
+            //println!("count = {}; \ncell = {:?}", i, cell);
             cells.insert(i,cell);
             i += 1;
         }
