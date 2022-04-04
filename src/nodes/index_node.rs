@@ -159,9 +159,9 @@ impl AnimationNode for IndexNode {
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, Error> {
         assert!(self.frames.len() != 0);
-        let is_loop = state.get_attribute::<bool>(&Attributes::Loop).unwrap_or(false);
-        let mut index = state.get_attribute::<usize>(&Attributes::Index).unwrap_or(0);
-        let frames = state.get_attribute::<usize>(&Attributes::Frames).unwrap_or(0);
+        let is_loop = state.get_attribute_or_error::<bool>(&Attributes::Loop).unwrap_or(false);
+        let mut index = state.get_attribute_or_error::<usize>(&Attributes::Index).unwrap_or(0);
+        let frames = state.get_attribute_or_error::<usize>(&Attributes::Frames).unwrap_or(0);
         index += frames;
         if index >= self.frames.len() {
             if is_loop {

@@ -43,8 +43,8 @@ impl AnimationNode for FPSNode {
     }
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, Error> {
-        let delta = state.get_attribute::<f32>(&Attributes::Delta).unwrap_or(0.);
-        let rem_time = state.get_attribute::<f32>(&Attributes::FrameTime).unwrap_or(0.);
+        let delta = state.get_attribute_or_error::<f32>(&Attributes::Delta).unwrap_or(0.);
+        let rem_time = state.get_attribute_or_error::<f32>(&Attributes::FrameTime).unwrap_or(0.);
         let time = delta + rem_time;
         let frames = (time / self.frame_time).floor();
         let rem_time = time - self.frame_time * frames;

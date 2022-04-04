@@ -25,12 +25,30 @@ impl Default for AnimationState {
 }
 
 impl AnimationState {
-    pub fn get_attribute<D: DeserializeOwned>(&self, key: &Attributes) -> Result<D, Error> {
+    /// will return `D` for attribute panics if the attribute is not set
+    /// or `D` is the wrong type
+    /// use try_get_attribute() if you are unsure if the attribute exists
+    #[inline(always)]
+    pub fn get_attribute<D: DeserializeOwned>(&self, key: &Attributes) -> D {
+        match self.data.get(key) {
+            Some(att) => {bincode::deserialize(att).expect("attribute to be the correct type")},
+            None => {panic!("{}", Error::AttributeNotFound(*key))}
+        }
+    }
+
+    /// will return an `option<D>` attribute panics if `D` is the wrong type
+    #[inline(always)]
+    pub fn try_get_attribute<D: DeserializeOwned>(&self, key: &Attributes) -> Option<D> {
+        bincode::deserialize(self.data.get(key)?).expect("attribute to be the correct type")
+    }
+
+    pub(crate) fn get_attribute_or_error<D: DeserializeOwned>(&self, key: &Attributes) -> Result<D, Error> {
         match self.data.get(key) {
             Some(att) => {Ok(bincode::deserialize(att)?)},
             None => Err(Error::AttributeNotFound(key.clone()))
         }
     }
+
     pub fn set_attribute<D: Serialize>(&mut self, key: Attributes, val: D) {
         match bincode::serialize(&val) {
             Ok(v) => {

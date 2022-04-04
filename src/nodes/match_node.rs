@@ -59,7 +59,7 @@ impl<T> AnimationNode for MatchNode<T>
 where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any + Ord
 {
     fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, Error> {
-        let val = state.get_attribute::<T>(&self.check).or_else(|e| {
+        let val = state.get_attribute_or_error::<T>(&self.check).or_else(|e| {
             match e {
                 Error::BincodeError(x) => match x {
                     _ => {bevy::log::error!("{}", x);
@@ -158,7 +158,6 @@ mod loader {
     //bevy_sprite_animation::nodes::match_node::
     impl<T> NodeLoader for MatchNodeLoader<T> where T:MatchType + std::any::Any + serde::de::DeserializeOwned + serde::Serialize + Ord {
         fn load(&mut self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNode>, crate::error::BevySpriteAnimationError> {
-        bevy::log::info!("here = {}", crate::here!());
         use std::collections::HashMap;
         let data = data.trim();
         let data = if data.starts_with(&format!("{}(", self.can_load[0])) {&data[self.can_load[0].len()..].trim()} else {data};
