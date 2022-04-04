@@ -108,7 +108,7 @@ impl<F> AnimationNodes<F> {
     }
 
     #[inline]
-    fn insert_node(&mut self, id: NodeID, node: Box<dyn AnimationNode>) {
+    pub fn insert_node(&mut self, id: NodeID, node: Box<dyn AnimationNode>) {
         self.nodes.insert(id, node);
     }
 
