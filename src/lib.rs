@@ -1,113 +1,272 @@
-use std::marker::PhantomData;
-
 use bevy::prelude::*;
-use self::core_new::NodeTree;
+use node_core::NodeLoader;
+use crate::error::BevySpriteAnimationError as Error;
+use std::{collections::HashMap, marker::PhantomData};
+use crate::prelude::*;
 
-#[cfg(test)]
-mod tests {
-    use crate::prelude::*;
-    use nodes::TestNode;
-    const DUPLICATE_NAME : &'static str = "duplicate";
-    const UNIQUE_NAME : &'static str = "unique";
-    const TEST_NODE_NAME : &'static str = "TestNode";
-    struct TestFlag;
-    #[test]
-    fn nodetree_test(){
-        let mut nodetree = NodeTree::<TestFlag>::default();
-        let node = TestNode::new(DUPLICATE_NAME);
-        nodetree.add(node);
-        //returns true if no node with that name is in the tree
-        let node_unique = TestNode::new(UNIQUE_NAME);
-        assert!(nodetree.add(node_unique));
-        //returns false if node is already in the tree
-        let node_duplicate = TestNode::new(DUPLICATE_NAME);
-        assert!(!nodetree.add(node_duplicate));
-        let node_replace_duplicate = TestNode::new(DUPLICATE_NAME);
-        assert!(nodetree.add_replace(node_replace_duplicate));
-    }
+mod error;
 
-    #[test]
-    fn animator_test(){
-        let mut node_tree = NodeTree::<TestFlag>::default();
-        node_tree.add(TestNode::new(TEST_NODE_NAME));
-        node_tree.add(TestNode::new_next(TEST_NODE_NAME));
-        node_tree.add(TestNode::new_alt(TEST_NODE_NAME));
-        node_tree.add(TestNode::new_temp(TEST_NODE_NAME));
-        node_tree.add(TestNode::error());
-        let mut animator = Animator::new(
-            vec!["temp".to_string()],
-            Frame::default(),
-            TEST_NODE_NAME,
-            30,
-        );
-        let mut out = String::new();
-        for i in 0..10 {
-            out.push_str(&format!("\nframe {}/10\n", i));
-            let _frame = animator.next_frame(1, &node_tree);
-            //out.push_str(animator.get_error_for_test());
-            #[cfg(feature = "node_trace")]
-            out.push_str(&animator.path_to_string(false));
-            #[cfg(not(feature = "node_trace"))]
-            out.push_str(&animator.get_string_for_test());
-        }
-        println!("{}",out);
-        #[cfg(feature = "node_trace")]
-        let out_const = "\nframe 0/10\nstart -> TestNode -> test_next_TestNode -> Frame -> End\nframe 1/10\nstart -> TestNode -> test_alt_TestNode -> Frame -> End\nframe 2/10\nstart -> TestNode -> test_temp_TestNode -> test_alt_TestNode -> Frame -> End\nframe 3/10\nstart -> TestNode -> test_temp_TestNode -> Frame -> End\nframe 4/10\nstart -> TestNode -> test_next_TestNode -> Frame -> End\nframe 5/10\nstart -> TestNode -> test_alt_TestNode -> Frame -> End\nframe 6/10\nstart -> TestNode -> test_temp_TestNode -> test_alt_TestNode -> Frame -> End\nframe 7/10\nstart -> TestNode -> test_temp_TestNode -> Frame -> End\nframe 8/10\nstart -> TestNode -> test_next_TestNode -> Frame -> End\nframe 9/10\nstart -> TestNode -> test_alt_TestNode -> Frame -> End";
-        #[cfg(not(feature = "node_trace"))]
-        let out_const = "\nframe 0/10\nFrame:0\nframe 1/10\nFrame:1\nframe 2/10\nFrame:2\nframe 3/10\nFrame:3\nframe 4/10\nFrame:0\nframe 5/10\nFrame:1\nframe 6/10\nFrame:2\nframe 7/10\nFrame:3\nframe 8/10\nFrame:0\nframe 9/10\nFrame:1";
-        assert!(out == out_const);
-    }
+pub mod prelude;
 
-    
-}
-
-pub mod core_new; //dont mind the new part VSCode decided that it was not going to let me lower case the c and still work proper so i needed to rename it
+pub mod attributes;
+pub mod node_core;
 pub mod nodes;
-mod datatype_impl;
-pub mod prelude{
-    pub use super::AnimationPlugin;
-    
-    pub use super::nodes;
-    pub use super::core_new;
-    pub use super::core_new::NodeTree;
-    pub use super::core_new::Animator;
-    pub use super::core_new::DataType;
-    pub use super::core_new::Cell;
-    pub use super::core_new::NodeResult;
-    pub use super::core_new::Frame;
+pub mod state;
+
+pub struct AnimationPlugin<Flag>{
+    marker: PhantomData<Flag>
 }
 
-pub struct AnimationPlugin<T: 'static + Send + Sync>(pub PhantomData<T>);
-impl<T: 'static + Send + Sync> Default for AnimationPlugin<T> {
-    fn default() -> Self {
-        AnimationPlugin(PhantomData::<T>)
+impl<F: 'static + Send + Sync> Default for AnimationPlugin<F> {
+    fn default() -> AnimationPlugin<F>{
+        AnimationPlugin { marker: PhantomData::default() }
     }
 }
 
-impl<T: 'static + Send + Sync> Plugin for AnimationPlugin<T>{
-    fn build(&self, app: &mut AppBuilder){
-        app.add_system(animation_update::<T>.system());
-        app.insert_resource(NodeTree::<T>::default());
-        app.add_system_to_stage(CoreStage::First, NodeTree::<T>::build.exclusive_system());
+impl<F:'static + Send + Sync + Component> Plugin for AnimationPlugin<F> {
+    fn build(&self, app: &mut App) {
+        app.insert_resource(AnimationNodes::<F>::default());
+        app.add_plugin(bevy_inspector_egui::InspectorPlugin::<AnimationNodes<F>>::default());
+        app.add_system(animation_system::<F>.label("AnimationUpdate"));
+        app.add_system(state::update_delta::<F>.before("AnimationUpdate"));
+        app.add_system_to_stage(CoreStage::First, state::clear_changed);
+        app.add_system_to_stage(CoreStage::Last, state::clear_unchanged_temp);
     }
 }
 
-fn animation_update<T:'static + Send + Sync>(
-    mut animators : Query<(&mut core_new::Animator, &mut TextureAtlasSprite, &mut Handle<TextureAtlas>), With<T>>,
-    time : Res<Time>,
-    node_tree : Res<NodeTree<T>>,
+#[derive(Component)]
+pub struct StartNode(node_core::NodeID);
+
+impl StartNode {
+    pub fn from_str(name: &str) -> StartNode {
+        StartNode(name.into())
+    }
+    pub fn from_u64(id: u64) -> StartNode {
+        StartNode(NodeID::from_u64(id))
+    }
+    pub fn from_hex(hex: &str) -> Result<StartNode, std::num::ParseIntError> {
+        let hex = if hex.to_lowercase().starts_with("0x") {
+            u64::from_str_radix(&hex[2..], 16)?
+        } else {u64::from_str_radix(hex, 16)?};
+        Ok(StartNode(NodeID::from_u64(hex)))
+    }
+}
+
+pub struct AnimationNodes<F> {
+    nodes: HashMap<node_core::NodeID, Box<dyn node_core::AnimationNode>>,
+    #[cfg(feature = "serialize")]
+    loaders: HashMap<String, Box<dyn NodeLoader>>,
+    marker: PhantomData<F>,
+}
+
+impl<F> Default for AnimationNodes<F> {
+    fn default() -> AnimationNodes<F> {
+        AnimationNodes {
+            nodes: HashMap::new(),
+            #[cfg(feature = "serialize")]
+            loaders: default_loaders(),
+            marker: PhantomData::default()
+        }
+    }
+}
+
+#[cfg(feature = "serialize")]
+fn default_loaders() -> HashMap<String, Box<dyn NodeLoader>> {
+    let mut map: HashMap<String, Box<dyn NodeLoader>> = HashMap::new();
+    map.insert("IndexNode".to_string(),IndexNode::loader());
+    map.insert("FPSNode".to_string(), FPSNode::loader());
+    map
+}
+
+impl<F> bevy_inspector_egui::Inspectable for AnimationNodes<F> {
+    type Attributes = ();
+
+    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _: Self::Attributes, context: &mut bevy_inspector_egui::Context) -> bool {
+        for (name, node) in self.nodes.iter_mut() {
+        ui.vertical(|ui| {
+            ui.label(name.to_string());
+            node.ui(ui, context);
+        });}
+        true
+    }
+}
+
+impl<F> AnimationNodes<F> {
+    pub fn get_node(&self, id: impl Into<node_core::NodeID>) -> Result<&Box<dyn node_core::AnimationNode>, Error> {
+        let id = id.into();
+        match self.nodes.get(&id) {
+            Some(n) => {Ok(n)},
+            None => {Err(Error::NodeNotFound(id))}
+        }
+    }
+
+    #[inline]
+    pub fn add_node(&mut self, node: Box<dyn node_core::AnimationNode>) -> NodeID {
+        let id = node.id();
+        self.insert_node(id.clone(), node);
+        id
+    }
+
+    #[inline]
+    fn insert_node(&mut self, id: NodeID, node: Box<dyn AnimationNode>) {
+        self.nodes.insert(id, node);
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn serialize(&self, asset_server: &AssetServer) -> Result<String, Error> {
+        let mut data = String::new();
+        data.push('[');
+        data.push('\n');
+        for (id, node) in self.nodes.iter() {
+            data.push('\t');
+            data.push_str(&format!("NodeID(\"{:#020X}\")", id.as_u64()));
+            data.push(':');
+            node.serialize(&mut data, asset_server)?;
+        }
+        data.push(']');
+        Ok(data)
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn registor_node(&mut self, loader: Box<dyn NodeLoader>) {
+        if loader.can_load().len() != 1 {
+            todo!("Change this so that AnimationNodes has a map of node_type -> Loader so one loader can load more then one type of node and share sate")
+        }
+        let can_load = loader.can_load()[0];
+        info!("registoring {} loader", can_load);
+        if self.loaders.contains_key(can_load) {warn!("A loader for {} was alreadey registored", can_load)};
+        self.loaders.insert(can_load.into(), loader);
+        //this does nothing for now but my become a memory leak in the futer if i make loader extentions point to a shaired loader;
+        //this would allow a single loader to share a state between multiple nodes of diffrent types being loaded but my allow a loader
+        //to have no type left relying on it because the are all now registored lesswere this becomes an implmentaion issue tho
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn load<P: Into<std::path::PathBuf>>(&mut self, path: P, asset_server: &AssetServer) -> Result<(), Error>{
+        use std::fs;
+        use std::path::PathBuf;
+        let path: PathBuf = path.into();
+        let tree = if let Some(ext) = path.as_path().extension() {
+            let t = ext == "nodetree";
+            if !(ext == "node" || t) {
+                return Err(Error::InvalidExtension(ext.to_str().unwrap().to_string()));
+            }
+            t
+        } else {false};
+
+        let data = fs::read_to_string(path.as_path())?;
+
+        if tree {
+            info!("loaded {:?} from {:?}",self.load_tree_from_str(&data, asset_server)?,path);
+        } else {
+            info!("loaded {} from {:?}",self.load_node_from_str(&data, asset_server)?,path);
+        }
+        Ok(())
+    }
+
+    pub fn load_node_from_str(&mut self, data: &str, asset_server: &AssetServer) -> Result<NodeID, Error> {
+        let (id, node) = self.load_node(data, asset_server)?;
+        self.insert_node(id, node);
+        Ok(id)
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn load_node(&mut self, data: &str, asset_server: &AssetServer) -> Result<(NodeID, Box<dyn AnimationNode>), Error> {
+        let data: &str = data.trim();
+        
+        let node_id: Option<NodeID> = if data.trim().starts_with("NodeID(\"") {
+            let end = data.find(')').ok_or(Error::MalformedStr { message: format!("Failed to find ')' "), location: here!() })? + 1;
+            //info!("data = {}", &data[..end]);
+            Some(ron::from_str(&data[..end])?)
+        } else {
+            None
+        };
+
+        let loader = if node_id.is_some() {data.find(':').ok_or(Error::MalformedStr{
+            message: format!("Failed to find NodeID : Node seperator"),
+            location: here!()
+        })? + 1} else {0};
+        
+        let start: usize = if let Some(i) = data[loader..].find('(') {i + loader} else { return Err(Error::MalformedStr{
+            message: format!("Failed to Find Oppening ( in str"),
+            location: here!(),
+        }
+        )};
+        let loader = self.loaders.get_mut(&data[loader..start]).ok_or(Error::NoLoader(data[loader..start].to_string()))?;
+        let node = loader.load(&data[start..], asset_server)?;
+        let node_id = if node_id.is_some() {node_id.unwrap()} else {node.id()};
+        Ok((node_id, node))
+    }
+
+    #[cfg(feature = "serialize")]
+    pub fn load_tree_from_str(&mut self, data: &str, asset_server: &AssetServer) -> Result<Vec<NodeID>, Error> {
+        let data = data.trim();
+        let data = if data.starts_with('[') {data[1..].trim()} else {data};
+        let mut nodes = Vec::new();
+        let mut index = 0;
+        loop {
+        if index >= data.len() {
+            break;
+        }
+        let data = &data[index..];
+        if let Some(next) = data.chars().next() {
+            if next.is_whitespace() || next == ',' || next == ']' || next == ')' || next == '}' {
+                index += 1;
+                trace!("skiped {} at begging of node?\n{}", next, here!());
+                continue;
+            }
+        };
+        
+        let start = if data.trim().starts_with("NodeID(\"") {
+            data.find("NodeID(\"").unwrap() + 30
+        } else {0};
+
+        let mut open = data[start..].match_indices('(');
+        open.next();
+        let mut close = data[start..].match_indices(')');
+        let end = loop {
+            match (open.next(), close.next()) {
+                (_, None) => return Err(
+                                Error::MalformedStr{
+                                    message: format!("Failed to find ) "),
+                                    location: here!()
+                                }),
+                (None, Some((end,_))) => {break end + start;},
+                (Some((open,_)), Some((close,_))) => if close < open {break close + start;}
+            }
+        };
+        let data = &data[..end + 1];
+        nodes.push(self.load_node(data, asset_server)?);
+        index += end + 1;
+        }   
+        let mut ids = Vec::new();
+        for (id, node) in nodes.into_iter() {
+            ids.push(id);
+            self.insert_node(id, node);
+        }
+        Ok(ids)
+    }
+}
+
+fn animation_system<Flag: Component>(
+    nodes: Res<AnimationNodes<Flag>>,
+    mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode), With<Flag>>
 ){
-    let dt = time.delta_seconds();
-    for (mut animator, mut sprite, mut texture) in animators.iter_mut(){
-        animator.time_since_last_frame += dt;
-        let frame_time = 1.0 / animator.frame_rate as f32;
-        if animator.time_since_last_frame > frame_time{
-            let frames = (animator.time_since_last_frame / frame_time).floor() ;
-            animator.time_since_last_frame -= frame_time * frames;
-            let next_frame = animator.next_frame(frames as usize, &node_tree);
-            sprite.index = next_frame.index;
-            if texture.id != next_frame.sprite_sheet.id {
-                texture.set(Box::new(next_frame.sprite_sheet)).expect("Failed to set Handle<TextureAtlas>");
+    for (mut state,mut handle, start) in query.iter_mut() {
+        let mut next = NodeResult::Next(start.0.clone());
+        trace!("Starting With: {}",start.0);
+        loop {
+            match next {
+                NodeResult::Next(id) => match nodes.get_node(id) {
+                    Ok(res) => {match res.run(&mut state) {
+                        Ok(r) => {
+                            next = r;
+                        },
+                        Err(e) => {error!("Node({}): {}", id, e); break;}
+                    }},
+                    Err(e) => {error!("{}",e); break;}
+                },
+                NodeResult::Done(h) => {*handle = h; break;},
             }
         }
     }
