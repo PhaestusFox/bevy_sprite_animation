@@ -124,12 +124,12 @@ impl Default for Attributes {
 lazy_static::lazy_static! {
     static ref CUSTOMATTRIBUTES: std::sync::Mutex<HashMap<Attributes, String>> = {
         let mut map = HashMap::new();
-        map.insert(Attributes::Loop, "Loop".to_string());
-        map.insert(Attributes::Index, "Loop".to_string());
-        map.insert(Attributes::Delta, "Loop".to_string());
-        map.insert(Attributes::FrameTime, "Loop".to_string());
-        map.insert(Attributes::Frames, "Loop".to_string());
-        map.insert(Attributes::Next, "Loop".to_string());
+        map.insert(Attributes::Loop,        "Loop".to_string());
+        map.insert(Attributes::Index,       "Index".to_string());
+        map.insert(Attributes::Delta,       "Delta".to_string());
+        map.insert(Attributes::FrameTime,   "FrameTime".to_string());
+        map.insert(Attributes::Frames,      "Frames".to_string());
+        map.insert(Attributes::Next,        "Next".to_string());
         std::sync::Mutex::new(map)
     };
 }
