@@ -136,13 +136,19 @@ lazy_static::lazy_static! {
 
 impl Attributes {
     pub fn new_custom(name: &str) -> Attributes{
+        let att = Attributes::from_str(name);
+        if let Attributes::Custom(_) = att {
+            CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
+        };
+        att
+    }
+
+    fn hash_to_custom(name: &str) -> u64 {
         use std::hash::Hash;
         use std::hash::Hasher;
         let mut hasher = std::collections::hash_map::DefaultHasher::default();
         name.hash(&mut hasher);
-        let att = Attributes::Custom(hasher.finish());
-        CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
-        att
+        hasher.finish()
     }
 
     pub fn name(&self) -> Option<String> {
@@ -161,6 +167,21 @@ impl Attributes {
                     format!("{:#x}", id)
                 } else {panic!("Core Attributes are all named")}
             }
+        }
+    }
+
+    pub fn from_str(from: &str) -> Attributes {
+        if from.starts_with("Index(") {
+            todo!("add custom index names")
+        }
+        match from {
+            "Loop" => {Attributes::Loop},
+            "Index" => {Attributes::Index},
+            "Delta" => {Attributes::Delta},
+            "FrameTime" => {Attributes::FrameTime},
+            "Frames" => {Attributes::Frames},
+            "Next" => {Attributes::Next},
+            _ => {Attributes::Custom(Attributes::hash_to_custom(from))}
         }
     }
 }
