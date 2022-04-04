@@ -1,4 +1,5 @@
 # bevy_sprite_animation
+
 A simple 2d sprite animation plugin for the bevy game engine;
 
 anyone is welcome to make suggestion and corrections to this repositry: esspecialy my spelling :S
@@ -20,130 +21,122 @@ fn main() {
         .add_system(read_animator)
 }
 ```
-Add `NodeCore`s &| `NodeBuild`s to `Res<NodeTree<T>>`
+Add Nodes to `Res<NodeTree<T>>`
 ```rust
 fn add_nodes(
     asset_server : Res<AssetServer>,
-    mut texture_atlas : ResMut<Assets<TextureAtlas>>,
-    mut node_tree : ResMut<NodeTree<MainAnimation>>,
+    mut node_tree : ResMut<AnimationNodes<MainAnimation>>,
 ) {
+    //make some image handles
+    let mut handles = Vec::new();
+    for i in 0..10 {
+        handles.push(asset_server.load(format!("SomeSprite_{}", i));
+    }
+
     //add a node created in this system
     //hardcoded like this
-    node_tree.add(
-        Box::new(
-            nodes::SwitchNode{
-                name : "gun_switch".to_string(),
-                driver : "gun".to_string(),
-                true_node : NodeResult::NodeName("gun_node".to_string()),
-                false_node : NodeResult::NodeName("idle_node".to_string()),
-                fallback_node : NodeResult::NodeName("idle_node".to_string()),
-                modifyers : vec![],
-         }));
-    //or using loaded assets like this
-    let texture_handle = asset_server.load("test.png");
-    let texture_atles = TextureAtlas::from_grid(texture_handle.clone(), Vec2::splat(60.0), 3, 3);
-    let texture_atles_handle = texture_atlas.add(texture_atles);
-    node_tree.add(
-        Box::new(
-            nodes::BasicNode{
-                name : "gun_node".to_string(),
-                driver : "gun_draw".to_string(),
-                cells : vec![
-                    Cell{
-                        frame : Frame{
-                            index : 3,
-                            sprite_sheet : texture_atles_handle.clone(),
-                            ..Default::default()},
-                        modifyers : vec![("gun_draw".to_string(), DataType::Usize(1))]}, //makes it select the next cell next frame
-                           //would be added automaticly by a builder with auto_inc^
-                    Cell{
-                        frame : Frame{
-                            index : 4,
-                            sprite_sheet : texture_atles_handle.clone(),
-                            ..Default::default()},
-                        modifyers : vec![("gun_draw".to_string(), DataType::Usize(2))]},
-                    Cell{
-                        frame : Frame{
-                            index : 5,
-                            sprite_sheet : texture_atles_handle.clone(),
-                            ..Default::default()},
-                        modifyers : vec![("gun_draw".to_string(), DataType::Usize(3))]},
-                    Cell{
-                        frame : Frame{
-                            index : 6,
-                            sprite_sheet : texture_atles_handle.clone(),
-                            ..Default::default()},
-                        modifyers : vec![("gun_draw".to_string(), DataType::Usize(4))]},
-                    Cell{
-                        frame : Frame{
-                            index : 7,
-                            sprite_sheet : texture_atles_handle.clone(),
-                            ..Default::default()},
-                        modifyers : vec![("gun_draw".to_string(), DataType::Usize(5)),]},
-                    Cell{
-                        frame : Frame{
-                            index : 7,
-                            sprite_sheet : texture_atles_handle.clone(),
-                            ..Default::default()},
-                        modifyers : vec![
-                            ("gun_draw".to_string(), DataType::Usize(0)),
-                            ("gun_shoot".to_string(), DataType::Bool(true)), //sets "gun_shoot" so logic else where can run
-                            ("gun".to_string(), DataType::Bool(false)),]}], //sets the gun false after it shoots
-                modifyers : vec![],
-    }));
+    let node = Box::new(IndexNode::new("New Node", &handles));
+
+    //with the nodes id being what ever the node implments for node.id()
+    //by default this is a hash_map's DefaultHasher hash of its name
+    node_tree.add_node(node);
+
+    //withs a specific NodeID
+    //this can be use to have to nodes with the same name.
+    //use when loading a node if that node has an NodeID specifide
+    node_tree.insert_node(NodeID::from("Node Name"), node);
     
-    //add a node builder that will be made at the beging of the next frame like this
-    node_tree.add_build(Box::new(nodes::SpriteSheetNodeBuilder{
-        name : "idle_node".to_string(),
-        driver : "idle_loop".to_string(),
-        path : "test.png".to_string(),
-        tile_size : Vec2::splat(60.0),
-        sprite_sheet_size : (3,3),//(colums, rows)
-        start_index : 0,
-        end_index : 2,
-        auto_inc : true,
-        cell_mods : HashMap::new(),
-        node_mods : Vec::new()
-    }));
+    //load a node
+    //from a file
+    node_tree.load("example.node");
+    //from a str
+    node_tree.load_node_from_str("...complex node data...");
+    
+    //load a node_tree
+    //from a file
+    node_tree.load("example.nodetree");
+    //from a str
+    node_tree.load_node_from_str("...any number of chained node data");
+
+
 }
 ```
-Create an entity with an `Animatior` on it that uses `NodeTree<T>` to pick its next frame
+Create an entity with an `AnimationState` on it that uses `AnimationNodes<T>` to pick its next frame
 ```rust
 fn add_animator(
     mut commands: Commands,
 ) {
-    commands.spawn_bundle(SpriteSheetBundle::default())
-    .insert(Animator::new(
-            vec!["gun_draw".to_string(),// is set temp so the shoot animation always starts from the beggining; if it was interupted half way.
-                 "gun_shoot".to_string()],//is set temp so the gun will shoot once without the programer needing to 'set' the "gun_shoot" to false allowing for non mut access
-            Frame::default(), //put the frame the the animator would display in an error situation could be a big red "ERROR" for debuging or just the fist frame of the idel animation *is subject to change how this works with feedback*
-            "gun_switch",
-            10,
-        )
-    ).insert(MainAnimation);
+    //create a default state
+    let mut state = AnimationState::default();
+    //set starting Attributes
+    start.set_attribute(Attributes::Loop, true);
+    //you can use custom Attributes
+    //custom attributes can be any type that implments serde::serialize and serde::deserializeOwned
+    start.set_attribute(Attributes::from_str("custom_attribute"), "cat");
+    //if you use new_custom the name will be stored for debuging and sierialization
+    start.set_attribute(Attributes::new_custom("specil_attribute"), 5);
+
+    //set temperary attribute
+    //these will be removed if they are not changed each frame
+    state.set_temporary(Attributes::from_str("Index(Idel)"));
+
+    //remove temperary attribute
+    //by default all attributes are persistent
+    state.set_persistent(Attributes::from_str("Index(Idel)"));
+
+    //add a sprite bundle
+    commands.spawn_bundle(SpriteBundle::default())
+    //add the state
+    .insert(state)
+    //add the flag for the AnimationNodes<T> to use
+    .insert(MainAnimation);
 }
 ```
-Change the state of the `Animatior` to controle what frame is picked next update
+Change the state of the `AnimationState` to controle what frame is picked next update
 ```rust
-fn update_animator(
-    mut animatiors : Query<&mut Animator>,
+fn update_animation_state(
+    mut animatiors : Query<&mut AnimationState>,
     input : Res<Input<KeyCode>>,
 ) {
     if input.just_pressed(KeyCode::Space){
     for mut animatior in animatiors.iter(){
-      animatior.set("gun",true)
+      start.set_attribute(Attributes::from_str("custom_attribute"), "dog");
     }}
 }
 ```
-get a parameter from an `Animatior` to create logic that happens only on special frames
+get an attribute from an `AnimationState` to create logic that happens only on special frames
 ```rust
-fn read_animator(
-    animatiors : Query<(Entity, &mut Animator)>,
+fn read_animation_state(
+    animatiors : Query<(Entity, &AnimationState)>,
 ) {
     for (entity, animatior) in animatiors.iter(){
-      if animatior.get::<bool>("gun_shoot") {
-        println!("{} is on a frame where they would shoot", entity);
+      if let Ok(ground_type) = animatior.get_attribute::<GroundType>(Attributes::from_str("step")) {
+        println!("{} is on a frame where you should play the sound of someone stepping on {}", entity, ground_type);
       }
+    }
+}
+```
+
+check if an attribute from `AnimationState` changed this frame
+```rust
+fn read_animation_change(
+    animatiors : Query<(Entity, &AnimationState)>,
+    dogs: Query<&mut Dogs>,
+) {
+    for (entity, animatior) in animatiors.iter(){
+        //assuming barke is temporary it will only change when set true.
+        //use changed for logic where you dont care what the attribute
+        if animatior.changed(Attribures::from_str("barke")) {
+            println!("{} is on a frame where you should play a barke sound effect", entity);
+        }
+    }
+
+    for (entity, animatior) in animatiors.iter(){
+        if animatior.changed(Attribures::from_str("dog_breed")) {
+            let dog = dogs.get(animatior.get_attribute::<Entity>(Attributes::from_str("dog_breed")));
+            //do something to the state bases on the breed it was set to
+            println!("{} is on a frame where you should play a barke sound effect", entity);
+        }
     }
 }
 ```
