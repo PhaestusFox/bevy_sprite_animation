@@ -56,15 +56,15 @@ impl AnimationState {
                 self.change(key);
                 self.data.insert(key, v);
             },
-            Err(e) => {error!("failed to serialize {:?}:{}",key, e);}
+            Err(e) => {error!("Failed to serialize {:?}:{}",key, e);}
         }
     }
     
-    pub fn remove_temp(&mut self, temp: &Attributes) -> bool {
+    pub fn set_persistent(&mut self, temp: &Attributes) -> bool {
         self.temp.remove(temp)
     }
 
-    pub fn add_temp(&mut self, temp: Attributes) -> bool {
+    pub fn set_temporary(&mut self, temp: Attributes) -> bool {
         self.temp.insert(temp)
     }
 
