@@ -3,16 +3,38 @@ use std::collections::HashMap;
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 
+#[cfg(test)]
+mod test{
+    use super::*;
+
+    #[test]
+    fn custom_from_str() {
+        let test = Attributes::new_attribute("Test".to_string());
+        assert_eq!(test, Attributes::new_attribute("Test".to_string()));
+        assert_eq!(test, Attributes::from_str("Test"));
+        assert_eq!(test, Attributes::from_str("Custom(Test)"));
+    }
+
+    #[test]
+    fn index_from_str() {
+        let test = Attributes::new_index("Test".to_string());
+        assert!(test.0 < 65536);
+        assert_eq!(test, Attributes::new_index("Test".to_string()));
+        assert_eq!(test, Attributes::from_str("Index(Test)"));
+        assert_ne!(test, Attributes::from_str("Test"));
+        assert_ne!(test, Attributes::new_attribute("Test".to_string()));
+    }
+}
+
 #[derive(Debug, Hash, PartialEq, Eq, bevy_inspector_egui::Inspectable, Clone, Copy, Reflect, PartialOrd, Ord)]
 #[reflect_value(Serialize, Deserialize)]
-pub enum Attributes {
-    Loop,
-    Index,
-    Delta,
-    FrameTime,
-    Frames,
-    Next,
-    Custom(u64),
+pub struct Attributes(u64);
+
+impl Attributes {
+    pub const DELTA: Attributes = Attributes(0);
+    pub const FRAMES: Attributes = Attributes(1);
+    pub const TIME_ON_FRAME: Attributes = Attributes(2);
+    pub const INDEX: Attributes = Attributes(256);
 }
 
 impl serde::Serialize for Attributes {
@@ -26,17 +48,23 @@ impl serde::Serialize for Attributes {
 
 impl Into<AttributesSerde> for &Attributes {
     fn into(self) -> AttributesSerde {
-        match self {
-            Attributes::Loop => AttributesSerde::Loop,
-            Attributes::Index => AttributesSerde::Index,
-            Attributes::Delta => AttributesSerde::Delta,
-            Attributes::FrameTime => AttributesSerde::FrameTime,
-            Attributes::Frames => AttributesSerde::Frames,
-            Attributes::Next => AttributesSerde::Next,
-            Attributes::Custom(r) => match self.name(){
-                Some(n) =>    {AttributesSerde::CustomName(n.to_string())},
-                None =>             {AttributesSerde::CustomID(*r)}
-            },
+        if self.0 < 256 {
+            match self.0 {
+            0 => AttributesSerde::Delta,
+            1 => AttributesSerde::Frames,
+            2 => AttributesSerde::FrameTime,
+            _ => panic!("Reserved for futer use")
+            }
+        } else if self.0 < 65536 {
+            match self.name() {
+                Some(n) => {AttributesSerde::IndexName(n)},
+                None => {AttributesSerde::IndexID(self.0 as u16)},
+            }
+        } else {
+            match self.name() {
+                Some(n) => {AttributesSerde::CustomName(n)},
+                None => {AttributesSerde::CustomID(self.0)},
+            }
         }
     }
 }
@@ -44,14 +72,14 @@ impl Into<AttributesSerde> for &Attributes {
 impl Into<Attributes> for AttributesSerde {
     fn into(self) -> Attributes {
         match self {
-            AttributesSerde::Loop => Attributes::Loop,
-            AttributesSerde::Index => Attributes::Index,
-            AttributesSerde::Delta => Attributes::Delta,
-            AttributesSerde::FrameTime => Attributes::FrameTime,
-            AttributesSerde::Frames => Attributes::Frames,
-            AttributesSerde::Next => Attributes::Next,
-            AttributesSerde::CustomName(n) => Attributes::new_custom(&n),
-            AttributesSerde::CustomID(r) => Attributes::Custom(r),
+            AttributesSerde::IndexID(id) => Attributes(id as u64),
+            AttributesSerde::IndexName(name) => Attributes::new_index(name),
+            AttributesSerde::Delta => Attributes::DELTA,
+            AttributesSerde::FrameTime => Attributes::TIME_ON_FRAME,
+            AttributesSerde::Frames => Attributes::FRAMES,
+            AttributesSerde::CustomName(name) => Attributes::new_attribute(name),
+            AttributesSerde::CustomID(r) => Attributes(r),
+            _ => panic!()
         }
     }
 }
@@ -59,7 +87,8 @@ impl Into<Attributes> for AttributesSerde {
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
 enum AttributesSerde {
     Loop,
-    Index,
+    IndexID(u16),
+    IndexName(String),
     Delta,
     FrameTime,
     Frames,
@@ -77,78 +106,63 @@ impl<'de> serde::Deserialize<'de> for Attributes {
     }
 }
 
-struct AttributeVisitor;
-
-impl<'de> serde::de::Visitor<'de> for AttributeVisitor {
-    type Value = Attributes;
-
-    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "Expected str reprentaion of a Attribute")
-    }
-
-    fn visit_str<E>(self, str: &str) -> Result<Self::Value, E>
-    where E: serde::de::Error
-    {
-        match str {
-            "Loop" => {Ok(Attributes::Loop)}
-            "Index" => {Ok(Attributes::Index)}
-            "Delta" => {Ok(Attributes::Delta)}
-            "FrameTime" => {Ok(Attributes::FrameTime)}
-            "Frames" => {Ok(Attributes::Frames)}
-            "Next" => {Ok(Attributes::Next)}
-            _ => {
-                if str.starts_with("Custom(") {Err(E::unknown_field(str, &["Custom()"]))}
-                else {
-                    let short = &str[7..str.len()-1];
-                    if short.starts_with("0x") {
-                        Ok(Attributes::Custom(u64::from_str_radix(short, 16).unwrap()))
-                    } else {
-                        use std::hash::Hash;
-                        use std::hash::Hasher;
-                        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-                        short.hash(&mut hasher);
-                        Ok(Attributes::Custom(hasher.finish()))
-                    }
-                }
-            }
-        }
-    }
-}
-
 impl Default for Attributes {
     fn default() -> Attributes {
-        Attributes::Index
+        Attributes(0)
     }
 }
 
 lazy_static::lazy_static! {
     static ref CUSTOMATTRIBUTES: std::sync::Mutex<HashMap<Attributes, String>> = {
         let mut map = HashMap::new();
-        map.insert(Attributes::Loop,        "Loop".to_string());
-        map.insert(Attributes::Index,       "Index".to_string());
-        map.insert(Attributes::Delta,       "Delta".to_string());
-        map.insert(Attributes::FrameTime,   "FrameTime".to_string());
-        map.insert(Attributes::Frames,      "Frames".to_string());
-        map.insert(Attributes::Next,        "Next".to_string());
+        map.insert(Attributes::DELTA,       "Delta".to_string());
+        map.insert(Attributes::TIME_ON_FRAME,   "FrameTime".to_string());
+        map.insert(Attributes::FRAMES,      "Frames".to_string());
         std::sync::Mutex::new(map)
     };
 }
 
 impl Attributes {
-    pub fn new_custom(name: &str) -> Attributes{
-        let att = Attributes::from_str(name);
-        if let Attributes::Custom(_) = att {
-            CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
-        };
+    #[inline(always)]
+    pub fn new_attribute(name: String) -> Attributes{
+        let att = Attributes(Attributes::hash_for_custom(&name));
+        CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
         att
     }
 
-    fn hash_to_custom(name: &str) -> u64 {
+    #[inline(always)]
+    pub fn new_index(name: String) -> Attributes{
+        let att = Attributes(Attributes::hash_for_index(&name));
+        CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
+        att
+    }
+
+    fn hash_for_custom(name: &str) -> u64 {
+        use std::hash::Hash;
+        use std::hash::Hasher;
+        let name = name.trim();
+        let mut hasher = std::collections::hash_map::DefaultHasher::default();
+        name.hash(&mut hasher);
+        let mut res = hasher.finish();
+        while res < 65536 {
+            hasher.write_u8(0);
+            res = hasher.finish();
+        }
+        res
+    }
+
+    fn hash_for_index(name: &str) -> u64{
+        let name = name.trim();
         use std::hash::Hash;
         use std::hash::Hasher;
         let mut hasher = std::collections::hash_map::DefaultHasher::default();
         name.hash(&mut hasher);
-        hasher.finish()
+        let mut res = hasher.finish() as u16;
+        while res < 256 {
+            hasher.write_u8(0);
+            res = hasher.finish() as u16;
+        }
+        res as u64
     }
 
     pub fn name(&self) -> Option<String> {
@@ -161,27 +175,43 @@ impl Attributes {
 
     pub fn name_or_id(&self) -> String {
         match self.name() {
-            Some(s) => {s.to_string()},
+            Some(s) => {
+                s.to_string()
+            },
             None => {
-                if let Attributes::Custom(id) = self {
-                    format!("{:#x}", id)
-                } else {panic!("Core Attributes are all named")}
+                if self.0 < 256 {
+                    panic!("All Core Attributes should have names")
+                } else if self.0 < 65536 {
+                    format!("Index({:#04X})", self.0)
+                } else {
+                    format!("Custom({:#016X})", self.0)
+                }
             }
         }
     }
 
+
+    /// Creates a string to an attribute primarly by hasinging it
+    /// will check if the str is a known attribute such as DELTA
+    /// will check if the str is Index(_) or Custom(_)
+    /// regestoring there names or reading there hex value accordingly
     pub fn from_str(from: &str) -> Attributes {
+        let from = from.trim();
+        if from.starts_with("Index(0X") || from.starts_with("Custom(0X") {
+            let start = from.find("(").unwrap() + 2;
+            return Attributes(u64::from_str_radix(&from[start..from.len()-1], 16).expect("proper hex format"));
+        }
         if from.starts_with("Index(") {
-            todo!("add custom index names")
+            return Attributes::new_index(from[6..from.len()-1].to_string());
+        }
+        if from.starts_with("Custom(") {
+            return Attributes::new_attribute(from[7..from.len()-1].to_string());
         }
         match from {
-            "Loop" => {Attributes::Loop},
-            "Index" => {Attributes::Index},
-            "Delta" => {Attributes::Delta},
-            "FrameTime" => {Attributes::FrameTime},
-            "Frames" => {Attributes::Frames},
-            "Next" => {Attributes::Next},
-            _ => {Attributes::Custom(Attributes::hash_to_custom(from))}
+            "Delta" => {Attributes::DELTA},
+            "FrameTime" => {Attributes::TIME_ON_FRAME},
+            "Frames" => {Attributes::FRAMES},
+            _ => {Attributes(Attributes::hash_for_custom(&from))}
         }
     }
 }

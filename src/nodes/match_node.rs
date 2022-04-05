@@ -59,7 +59,7 @@ impl<T> AnimationNode for MatchNode<T>
 where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any + Ord
 {
     fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, Error> {
-        let val = state.get_attribute_or_error::<T>(&self.check).or_else(|e| {
+        let val = state.try_get_attribute_or_error::<T>(self.check).or_else(|e| {
             match e {
                 Error::BincodeError(x) => match x {
                     _ => {bevy::log::error!("{}", x);

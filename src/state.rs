@@ -17,9 +17,8 @@ pub struct AnimationState {
 impl Default for AnimationState {
     fn default() -> Self {
         let mut data = HashMap::default();
-        data.insert(Attributes::Delta, bincode::serialize(&0.0f32).unwrap());
-        data.insert(Attributes::Frames, bincode::serialize(&0usize).unwrap());
-        data.insert(Attributes::Index, bincode::serialize(&0usize).unwrap());
+        data.insert(Attributes::DELTA, bincode::serialize(&0.0f32).unwrap());
+        data.insert(Attributes::FRAMES, bincode::serialize(&0usize).unwrap());
         Self { data, changed: HashSet::new(), temp: HashSet::new() }
     }
 }
@@ -29,21 +28,25 @@ impl AnimationState {
     /// or `D` is the wrong type
     /// use try_get_attribute() if you are unsure if the attribute exists
     #[inline(always)]
-    pub fn get_attribute<D: DeserializeOwned>(&self, key: &Attributes) -> D {
-        match self.data.get(key) {
-            Some(att) => {bincode::deserialize(att).expect("attribute to be the correct type")},
-            None => {panic!("{}", Error::AttributeNotFound(*key))}
-        }
+    pub fn get_attribute<D: DeserializeOwned>(&self, key: Attributes) -> D {
+        self.try_get_attribute(key).expect("Attribute Exists")
     }
 
     /// will return an `option<D>` attribute panics if `D` is the wrong type
     #[inline(always)]
-    pub fn try_get_attribute<D: DeserializeOwned>(&self, key: &Attributes) -> Option<D> {
-        bincode::deserialize(self.data.get(key)?).expect("attribute to be the correct type")
+    pub fn try_get_attribute<D: DeserializeOwned>(&self, key: Attributes) -> Option<D> {
+        match self.try_get_attribute_or_error(key) {
+            Ok(res) => Some(res),
+            Err(e) => match e {
+                BevySpriteAnimationError::AttributeNotFound(_) => None,
+                BevySpriteAnimationError::BincodeError(e) => panic!("Attribute could not be deserialised: {}", e),
+                _ => panic!("How did you get this error; please file bug report"),
+            }
+        }
     }
 
-    pub(crate) fn get_attribute_or_error<D: DeserializeOwned>(&self, key: &Attributes) -> Result<D, Error> {
-        match self.data.get(key) {
+    pub(crate) fn try_get_attribute_or_error<D: DeserializeOwned>(&self, key: Attributes) -> Result<D, Error> {
+        match self.data.get(&key) {
             Some(att) => {Ok(bincode::deserialize(att)?)},
             None => Err(Error::AttributeNotFound(key.clone()))
         }
@@ -87,7 +90,7 @@ pub(crate) fn update_delta<Flag: Component>(
     mut states: Query<&mut AnimationState, With<Flag>>,
 ){
     for mut state in states.iter_mut() {
-        state.set_attribute(Attributes::Delta, time.delta_seconds());
+        state.set_attribute(Attributes::DELTA, time.delta_seconds());
     }
 }
 
