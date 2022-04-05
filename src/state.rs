@@ -65,6 +65,38 @@ impl AnimationState {
         }
     }
     
+    /// gets the refrence to raw data stored for an attributes
+    /// will panic if attribute in not initalised
+    /// use `try_get_attribute_raw()` to get and `Option<&Vec<u8>>` instead
+    #[inline]
+    pub fn get_attribute_raw(&self, key: Attribute) -> &Vec<u8> {
+        self.try_get_attribute_raw(key).unwrap()
+    }
+
+    /// returns an `Option<&Vec<u8>>` for an attributes data
+    /// use this if yoy dont know the type and are not sure if it exists
+    #[inline]
+    pub fn try_get_attribute_raw(&self, key: Attribute) -> Option<&Vec<u8>> {
+        self.data.get(&key)
+    }
+
+    /// returns an `&Vec<u8>` to an attributes data
+    /// use this if you want to edit and attribure without deserilizing it first
+    /// # WARNING
+    /// there are no checks to make sure your edits will still deserilize
+    pub fn get_attribute_raw_mut(&mut self, key: Attribute) -> &mut Vec<u8> {
+        self.try_get_attribute_raw_mut(key).unwrap()
+    }
+
+    /// returns an `Option<&Vec<u8>>` to an attributes data
+    /// use this if you want to edit and attribure without deserilizing it first
+    /// # WARNING
+    /// there are no checks to make sure your edits will still deserilize
+    #[inline]
+    pub fn try_get_attribute_raw_mut(&mut self, key: Attribute) -> Option<&mut Vec<u8>>{
+        self.data.get_mut(&key)
+    }
+
     pub fn set_persistent(&mut self, temp: &Attribute) -> bool {
         self.temp.remove(temp)
     }
