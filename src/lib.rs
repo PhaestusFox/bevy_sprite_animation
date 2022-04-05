@@ -92,12 +92,8 @@ impl<F> bevy_inspector_egui::Inspectable for AnimationNodes<F> {
 }
 
 impl<F> AnimationNodes<F> {
-    pub fn get_node(&self, id: impl Into<node_core::NodeID>) -> Result<&Box<dyn node_core::AnimationNode>, Error> {
-        let id = id.into();
-        match self.nodes.get(&id) {
-            Some(n) => {Ok(n)},
-            None => {Err(Error::NodeNotFound(id))}
-        }
+    pub fn get_node(&self, id: NodeID) -> Option<&Box<dyn node_core::AnimationNode>> {
+        self.nodes.get(&id)
     }
 
     #[inline]
@@ -257,15 +253,14 @@ fn animation_system<Flag: Component>(
         trace!("Starting With: {}",start.0);
         loop {
             match next {
-                NodeResult::Next(id) => match nodes.get_node(id) {
-                    Ok(res) => {match res.run(&mut state) {
-                        Ok(r) => {
-                            next = r;
-                        },
-                        Err(e) => {error!("Node({}): {}", id, e); break;}
-                    }},
-                    Err(e) => {error!("{}",e); break;}
-                },
+                NodeResult::Next(id) => {if let Some(node) = nodes.get_node(id) {
+                    trace!("Running Node: {}",id);
+                    next = node.run(&mut state);
+                } else {
+                    error!("Node not found: {}",id);
+                    break;
+                }},
+                NodeResult::Error(e) => {error!("{}",e); break;}
                 NodeResult::Done(h) => {*handle = h; break;},
             }
         }

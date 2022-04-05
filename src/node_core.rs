@@ -3,7 +3,7 @@ use crate::error::BevySpriteAnimationError as Error;
 
 pub trait AnimationNode: Send + Sync
 {
-    fn run(&self, state: &mut super::state::AnimationState) -> Result<NodeResult, Error>;
+    fn run(&self, state: &mut super::state::AnimationState) -> NodeResult;
     fn name(&self) -> &str;
     #[cfg(feature = "bevy-inspector-egui")]
     fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool;

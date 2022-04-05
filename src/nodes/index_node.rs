@@ -172,7 +172,7 @@ impl AnimationNode for IndexNode {
         "IndexNode".to_string()
     }
 
-    fn run(&self, state: &mut AnimationState) -> Result<NodeResult, Error> {
+    fn run(&self, state: &mut AnimationState) -> NodeResult {
         assert!(self.frames.len() != 0);
         let mut index = state.try_get_attribute::<usize>(self.index).unwrap_or(0);
         let frames = state.get_attribute::<usize>(Attribute::FRAMES);
@@ -185,8 +185,7 @@ impl AnimationNode for IndexNode {
             }
         }
         state.set_attribute(self.index, index);
-        Ok(NodeResult::Done(self.frames[index].clone()))
-        
+        NodeResult::Done(self.frames[index].clone())
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
