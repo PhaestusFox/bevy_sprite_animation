@@ -29,7 +29,7 @@ mod test {
         Zombie1/zombie1_00001.png,
         Zombie1/zombie1_00002.png,
         ]", &asset_server).unwrap();
-    let true_node = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3]));
+    let true_node = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
     assert_eq!(test_node.hash(), true_node.hash());
     }
 
@@ -56,7 +56,7 @@ mod test {
             ],
             ),
         ", &asset_server).unwrap();
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3]));
+        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         assert_eq!(test_node.hash(), true_node.hash());
     }
 
@@ -81,9 +81,10 @@ mod test {
             Zombie1/zombie1_00001.png,
             Zombie1/zombie1_00002.png,
             ],
+            is_loop: true,
             ),
         ", &asset_server).unwrap();
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3]));
+        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         assert_eq!(test_node.hash(), true_node.hash());
     }
 
@@ -97,11 +98,11 @@ mod test {
         for i in 0..3 {
             handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
         }
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3]));
+        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         let mut res = String::new();
         let ser_res = true_node.serialize(&mut res, &asset_server);
         assert!(ser_res.is_ok(), "{}", ser_res.err().unwrap());
-        assert!(res == "IndexNode(\n\tname: \"Zombie1_Idle\",\n\tframes: [\n\tZombie1/zombie1_00000.png,\n\tZombie1/zombie1_00001.png,\n\tZombie1/zombie1_00002.png,\n\t],\n\t),\n")
+        assert!(res == "IndexNode(\n\tname: \"Zombie1_Idle\",\n\tframes: [\n\tZombie1/zombie1_00000.png,\n\tZombie1/zombie1_00001.png,\n\tZombie1/zombie1_00002.png,\n\t],\n\tis_loop: true,\n\tindex: IndexID(256),\n\t),\n")
     }
 
     #[test]
@@ -116,13 +117,14 @@ mod test {
         for i in 0..3 {
             handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
         }
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3]));
+        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         let mut res = String::new();
         assert!(true_node.serialize(&mut res, &asset_server).is_ok());
         let mut loader = IndexNodeLoader;
         let test_node = loader.load(&res, &asset_server);
         assert!(test_node.is_ok(), "{}", test_node.err().unwrap());
-        assert_eq!(test_node.unwrap().hash(), true_node.hash())
+        let test_node = test_node.unwrap();
+        assert_eq!(test_node.hash(), true_node.hash())
     }
 }
 
@@ -130,8 +132,8 @@ mod test {
 pub struct IndexNode{
     name: String,
     frames: Vec<Handle<Image>>,
-    //index: Attributes,
     is_loop: bool,
+    index: Attributes,
 }
 
 impl IndexNode {
@@ -140,8 +142,18 @@ impl IndexNode {
         IndexNode { 
             name: name.to_string(),
             frames: frames.to_vec(),
-            //index: Attributes::Index,
             is_loop,
+            index: Attributes::INDEX,
+        }
+    }
+
+    #[inline(always)]
+    pub fn new_with_index(name: &str, frames: &[Handle<Image>], is_loop: bool, index: Attributes) -> IndexNode {
+        IndexNode { 
+            name: name.to_string(),
+            frames: frames.to_vec(),
+            is_loop,
+            index,
         }
     }
 
@@ -162,6 +174,7 @@ impl AnimationNode for IndexNode {
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, Error> {
         assert!(self.frames.len() != 0);
+        let mut index = state.try_get_attribute::<usize>(self.index).unwrap_or(0);
         let frames = state.get_attribute::<usize>(Attributes::FRAMES);
         index += frames;
         if index >= self.frames.len() {
@@ -198,6 +211,8 @@ impl AnimationNode for IndexNode {
         }
         data.push_str("],\n\t");
         data.push_str(&format!("is_loop: {},\n\t",self.is_loop));
+        data.push_str("index: ");
+        data.push_str(&ron::to_string(&self.index)?);
         data.push_str(",\n\t),\n");
         Ok(())
     }
@@ -283,6 +298,12 @@ impl NodeLoader for IndexNodeLoader {
             }
             frames.push(asset_server.load(path[0..path.len()].trim()))
         }
+
+        let index = match map.get("index") {
+            Some(v) => {ron::from_str(v)?},
+            None => {Attributes::INDEX}
+        };
+        
         let is_loop = match map.get("is_loop") {
             Some(v) => {!v.trim().starts_with("f")},
             None => {true}
@@ -300,6 +321,7 @@ impl NodeLoader for IndexNodeLoader {
         Ok(Box::new(IndexNode {
             name,
             frames,
+            index,
             is_loop
         }))
     }
