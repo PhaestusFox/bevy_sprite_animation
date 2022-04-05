@@ -58,21 +58,17 @@ impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned + Ord> MatchN
 impl<T> AnimationNode for MatchNode<T>
 where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any + Ord
 {
-    fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, Error> {
-        let val = state.try_get_attribute_or_error::<T>(self.check).or_else(|e| {
-            match e {
-                Error::BincodeError(x) => match x {
-                    _ => {bevy::log::error!("{}", x);
-                            todo!()},
-                }
-                _ => {},
-            }
-            Err(e)
-        })?;
+    fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
+
+        let val = match state.try_get_attribute_or_error::<T>(self.check) {
+            Ok(x) => x,
+            Err(e) => return NodeResult::Error(e),
+        };
+
         if let Some(next) = self.pairs.get(&val) {
-            Ok(crate::node_core::NodeResult::Next(*next))
+            NodeResult::Next(*next)
         } else {
-            Ok(crate::node_core::NodeResult::Next(self.default))
+            NodeResult::Next(self.default)
         }
     }
 

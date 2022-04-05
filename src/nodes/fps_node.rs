@@ -42,7 +42,7 @@ impl AnimationNode for FPSNode {
         &self.name
     }
 
-    fn run(&self, state: &mut AnimationState) -> Result<NodeResult, Error> {
+    fn run(&self, state: &mut AnimationState) -> NodeResult {
         let delta = state.get_attribute::<f32>(Attributes::DELTA);
         let rem_time = state.try_get_attribute_or_error::<f32>(Attributes::TIME_ON_FRAME).unwrap_or(0.);
         let time = delta + rem_time;
@@ -50,7 +50,7 @@ impl AnimationNode for FPSNode {
         let rem_time = time - self.frame_time * frames;
         state.set_attribute(Attributes::FRAMES, frames as usize);
         state.set_attribute(Attributes::TIME_ON_FRAME, rem_time);
-        Ok(NodeResult::Next(self.then))
+        NodeResult::Next(self.then)
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
