@@ -131,14 +131,17 @@ pub struct IndexNode{
     name: String,
     frames: Vec<Handle<Image>>,
     //index: Attributes,
+    is_loop: bool,
 }
 
 impl IndexNode {
-    pub fn new(name: &str, frames: &[Handle<Image>]) -> IndexNode{
+    #[inline(always)]
+    pub fn new(name: &str, frames: &[Handle<Image>], is_loop: bool) -> IndexNode{
         IndexNode { 
             name: name.to_string(),
             frames: frames.to_vec(),
             //index: Attributes::Index,
+            is_loop,
         }
     }
 
@@ -159,18 +162,16 @@ impl AnimationNode for IndexNode {
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, Error> {
         assert!(self.frames.len() != 0);
-        let is_loop = state.get_attribute_or_error::<bool>(&Attributes::Loop).unwrap_or(false);
-        let mut index = state.get_attribute_or_error::<usize>(&Attributes::Index).unwrap_or(0);
-        let frames = state.get_attribute_or_error::<usize>(&Attributes::Frames).unwrap_or(0);
+        let frames = state.get_attribute::<usize>(Attributes::FRAMES);
         index += frames;
         if index >= self.frames.len() {
-            if is_loop {
+            if self.is_loop {
                 index %= self.frames.len();
             } else {
                 index = self.frames.len() - 1;
             }
         }
-        state.set_attribute(Attributes::Index, index);
+        state.set_attribute(self.index, index);
         Ok(NodeResult::Done(self.frames[index].clone()))
         
     }
@@ -195,7 +196,9 @@ impl AnimationNode for IndexNode {
             }
             data.push_str(",\n\t");
         }
-        data.push_str("],\n\t),\n");
+        data.push_str("],\n\t");
+        data.push_str(&format!("is_loop: {},\n\t",self.is_loop));
+        data.push_str(",\n\t),\n");
         Ok(())
     }
 
@@ -214,7 +217,7 @@ pub use loader::IndexNodeLoader;
 
 #[cfg(feature = "serialize")]
 mod loader {
-use crate::node_core::NodeLoader;
+use crate::{node_core::NodeLoader, prelude::Attributes};
 use std::collections::HashMap;
 use super::IndexNode;
 
@@ -280,6 +283,11 @@ impl NodeLoader for IndexNodeLoader {
             }
             frames.push(asset_server.load(path[0..path.len()].trim()))
         }
+        let is_loop = match map.get("is_loop") {
+            Some(v) => {!v.trim().starts_with("f")},
+            None => {true}
+        };
+
         let name = if let Some(v) = map.get("name") {
             v[1..v.len() - 1].to_string()
         } else {
@@ -292,6 +300,7 @@ impl NodeLoader for IndexNodeLoader {
         Ok(Box::new(IndexNode {
             name,
             frames,
+            is_loop
         }))
     }
 
