@@ -9,35 +9,35 @@ mod test{
 
     #[test]
     fn custom_from_str() {
-        let test = Attributes::new_attribute("Test".to_string());
-        assert_eq!(test, Attributes::new_attribute("Test".to_string()));
-        assert_eq!(test, Attributes::from_str("Test"));
-        assert_eq!(test, Attributes::from_str("Custom(Test)"));
+        let test = Attribute::new_attribute("Test".to_string());
+        assert_eq!(test, Attribute::new_attribute("Test".to_string()));
+        assert_eq!(test, Attribute::from_str("Test"));
+        assert_eq!(test, Attribute::from_str("Custom(Test)"));
     }
 
     #[test]
     fn index_from_str() {
-        let test = Attributes::new_index("Test".to_string());
+        let test = Attribute::new_index("Test".to_string());
         assert!(test.0 < 65536);
-        assert_eq!(test, Attributes::new_index("Test".to_string()));
-        assert_eq!(test, Attributes::from_str("Index(Test)"));
-        assert_ne!(test, Attributes::from_str("Test"));
-        assert_ne!(test, Attributes::new_attribute("Test".to_string()));
+        assert_eq!(test, Attribute::new_index("Test".to_string()));
+        assert_eq!(test, Attribute::from_str("Index(Test)"));
+        assert_ne!(test, Attribute::from_str("Test"));
+        assert_ne!(test, Attribute::new_attribute("Test".to_string()));
     }
 }
 
 #[derive(Debug, Hash, PartialEq, Eq, bevy_inspector_egui::Inspectable, Clone, Copy, Reflect, PartialOrd, Ord)]
 #[reflect_value(Serialize, Deserialize)]
-pub struct Attributes(u64);
+pub struct Attribute(u64);
 
-impl Attributes {
-    pub const DELTA: Attributes = Attributes(0);
-    pub const FRAMES: Attributes = Attributes(1);
-    pub const TIME_ON_FRAME: Attributes = Attributes(2);
-    pub const INDEX: Attributes = Attributes(256);
+impl Attribute {
+    pub const DELTA: Attribute = Attribute(0);
+    pub const FRAMES: Attribute = Attribute(1);
+    pub const TIME_ON_FRAME: Attribute = Attribute(2);
+    pub const INDEX: Attribute = Attribute(256);
 }
 
-impl serde::Serialize for Attributes {
+impl serde::Serialize for Attribute {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer {
@@ -46,7 +46,7 @@ impl serde::Serialize for Attributes {
     }
 }
 
-impl Into<AttributesSerde> for &Attributes {
+impl Into<AttributesSerde> for &Attribute {
     fn into(self) -> AttributesSerde {
         if self.0 < 256 {
             match self.0 {
@@ -69,16 +69,16 @@ impl Into<AttributesSerde> for &Attributes {
     }
 }
 
-impl Into<Attributes> for AttributesSerde {
-    fn into(self) -> Attributes {
+impl Into<Attribute> for AttributesSerde {
+    fn into(self) -> Attribute {
         match self {
-            AttributesSerde::IndexID(id) => Attributes(id as u64),
-            AttributesSerde::IndexName(name) => Attributes::new_index(name),
-            AttributesSerde::Delta => Attributes::DELTA,
-            AttributesSerde::FrameTime => Attributes::TIME_ON_FRAME,
-            AttributesSerde::Frames => Attributes::FRAMES,
-            AttributesSerde::CustomName(name) => Attributes::new_attribute(name),
-            AttributesSerde::CustomID(r) => Attributes(r),
+            AttributesSerde::IndexID(id) => Attribute(id as u64),
+            AttributesSerde::IndexName(name) => Attribute::new_index(name),
+            AttributesSerde::Delta => Attribute::DELTA,
+            AttributesSerde::FrameTime => Attribute::TIME_ON_FRAME,
+            AttributesSerde::Frames => Attribute::FRAMES,
+            AttributesSerde::CustomName(name) => Attribute::new_attribute(name),
+            AttributesSerde::CustomID(r) => Attribute(r),
             _ => panic!()
         }
     }
@@ -97,7 +97,7 @@ enum AttributesSerde {
     CustomName(String),
 }
 
-impl<'de> serde::Deserialize<'de> for Attributes {
+impl<'de> serde::Deserialize<'de> for Attribute {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de> {
@@ -106,33 +106,33 @@ impl<'de> serde::Deserialize<'de> for Attributes {
     }
 }
 
-impl Default for Attributes {
-    fn default() -> Attributes {
-        Attributes(0)
+impl Default for Attribute {
+    fn default() -> Attribute {
+        Attribute(0)
     }
 }
 
 lazy_static::lazy_static! {
-    static ref CUSTOMATTRIBUTES: std::sync::Mutex<HashMap<Attributes, String>> = {
+    static ref CUSTOMATTRIBUTES: std::sync::Mutex<HashMap<Attribute, String>> = {
         let mut map = HashMap::new();
-        map.insert(Attributes::DELTA,       "Delta".to_string());
-        map.insert(Attributes::TIME_ON_FRAME,   "FrameTime".to_string());
-        map.insert(Attributes::FRAMES,      "Frames".to_string());
+        map.insert(Attribute::DELTA,       "Delta".to_string());
+        map.insert(Attribute::TIME_ON_FRAME,   "FrameTime".to_string());
+        map.insert(Attribute::FRAMES,      "Frames".to_string());
         std::sync::Mutex::new(map)
     };
 }
 
-impl Attributes {
+impl Attribute {
     #[inline(always)]
-    pub fn new_attribute(name: String) -> Attributes{
-        let att = Attributes(Attributes::hash_for_custom(&name));
+    pub fn new_attribute(name: String) -> Attribute{
+        let att = Attribute(Attribute::hash_for_custom(&name));
         CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
         att
     }
 
     #[inline(always)]
-    pub fn new_index(name: String) -> Attributes{
-        let att = Attributes(Attributes::hash_for_index(&name));
+    pub fn new_index(name: String) -> Attribute{
+        let att = Attribute(Attribute::hash_for_index(&name));
         CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
         att
     }
@@ -195,23 +195,23 @@ impl Attributes {
     /// will check if the str is a known attribute such as DELTA
     /// will check if the str is Index(_) or Custom(_)
     /// regestoring there names or reading there hex value accordingly
-    pub fn from_str(from: &str) -> Attributes {
+    pub fn from_str(from: &str) -> Attribute {
         let from = from.trim();
         if from.starts_with("Index(0X") || from.starts_with("Custom(0X") {
             let start = from.find("(").unwrap() + 2;
-            return Attributes(u64::from_str_radix(&from[start..from.len()-1], 16).expect("proper hex format"));
+            return Attribute(u64::from_str_radix(&from[start..from.len()-1], 16).expect("proper hex format"));
         }
         if from.starts_with("Index(") {
-            return Attributes::new_index(from[6..from.len()-1].to_string());
+            return Attribute::new_index(from[6..from.len()-1].to_string());
         }
         if from.starts_with("Custom(") {
-            return Attributes::new_attribute(from[7..from.len()-1].to_string());
+            return Attribute::new_attribute(from[7..from.len()-1].to_string());
         }
         match from {
-            "Delta" => {Attributes::DELTA},
-            "FrameTime" => {Attributes::TIME_ON_FRAME},
-            "Frames" => {Attributes::FRAMES},
-            _ => {Attributes(Attributes::hash_for_custom(&from))}
+            "Delta" => {Attribute::DELTA},
+            "FrameTime" => {Attribute::TIME_ON_FRAME},
+            "Frames" => {Attribute::FRAMES},
+            _ => {Attribute(Attribute::hash_for_custom(&from))}
         }
     }
 }

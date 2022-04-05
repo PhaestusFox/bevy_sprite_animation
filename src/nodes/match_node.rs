@@ -14,7 +14,7 @@ where T:'static + Send + Sync + Eq + std::hash::Hash
 pub struct MatchNode<T:'static + Send + Sync> {
     name: String,
     pairs: HashMap<T, NodeID>,
-    check: Attributes,
+    check: Attribute,
     default: NodeID,
 }
 
@@ -32,7 +32,7 @@ impl<T:MatchType + Ord> std::hash::Hash  for MatchNode<T> {
 }
 
 impl<T:MatchType> MatchNode<T> {
-    pub fn new(name: &str, set: Vec<(T, NodeID)>, check: Attributes, default: NodeID) -> MatchNode<T> {
+    pub fn new(name: &str, set: Vec<(T, NodeID)>, check: Attribute, default: NodeID) -> MatchNode<T> {
         let mut pairs = HashMap::default();
         for (k,v) in set.into_iter() {
             pairs.insert(k, v);
@@ -137,7 +137,7 @@ mod loader {
     use crate::node_core::NodeLoader;
 
     use crate::error::BevySpriteAnimationError as Error;
-    use crate::prelude::{NodeID, Attributes};
+    use crate::prelude::{NodeID, Attribute};
 
     use super::{MatchNode, MatchType};
 
@@ -207,7 +207,7 @@ mod loader {
         let pairs = map.get("pairs").ok_or(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to find pairs: [({},NodeID)]", std::any::type_name::<T>()), loc: crate::here!() })?;
         let default = map.get("default").ok_or(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to find default: {}]", std::any::type_name::<T>()), loc: crate::here!() })?;
         let name = map.get("name").ok_or(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to find name: String]"), loc: crate::here!() })?;
-        let check: Attributes = ron::from_str(check)?;
+        let check: Attribute = ron::from_str(check)?;
         let pairs: Vec<(T, NodeID)> = ron::from_str(pairs).or_else(|_| {Err(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to deserialize pairs, check type matches"), loc: crate::here!() })})?;
         let default: NodeID = ron::from_str(default)?;
         let name = name[1..name.len()-1].to_string();

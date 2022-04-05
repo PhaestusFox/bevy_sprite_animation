@@ -1,4 +1,4 @@
-pub use super::attributes::Attributes;
+pub use super::attributes::Attribute;
 pub use super::state::AnimationState;
 pub use super::AnimationPlugin;
 pub use super::AnimationNodes;

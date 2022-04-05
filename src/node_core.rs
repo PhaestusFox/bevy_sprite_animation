@@ -35,6 +35,26 @@ impl NodeID {
     pub fn from_u64(id: u64) -> Self {
         NodeID(id)
     }
+    pub fn from_str(id: &str) -> NodeID {
+        let id = if id.starts_with("NodeID(") {
+            &id[7..id.len()-1]
+        } else {
+            id
+        };
+        if id.starts_with("0") {
+        if id[1..].starts_with(|c: char| c == 'x' || c == 'X') {
+            NodeID(u64::from_str_radix(&id[2..], 16).unwrap())
+        } else {
+            NodeID(u64::from_str_radix(id, 10).unwrap())
+        }
+        } else {
+            use std::hash::Hash;
+            use std::hash::Hasher;
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            id.hash(&mut hasher);
+            NodeID(hasher.finish())
+        }
+    }
 }
 
 #[cfg(feature = "serialize")]
@@ -103,6 +123,7 @@ impl Into<NodeID> for String {
 pub enum NodeResult {
     Next(NodeID),
     Done(Handle<Image>),
+    Error(String),
 }
 
 impl std::fmt::Display for NodeResult{
@@ -110,6 +131,7 @@ impl std::fmt::Display for NodeResult{
         match self {
             NodeResult::Next(id) => f.write_fmt(format_args!("Next({:#x})", id.0)),
             NodeResult::Done(_) => f.write_str("Done"),
+            NodeResult::Error(_) => f.write_str("Error"),
         }
     }
 }

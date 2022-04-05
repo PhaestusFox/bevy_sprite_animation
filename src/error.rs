@@ -3,7 +3,7 @@ use bevy::prelude::Image;
 use thiserror::Error;
 
 use crate::prelude::NodeID;
-use crate::prelude::Attributes;
+use crate::prelude::Attribute;
 
 type Location = String;
 
@@ -23,7 +23,7 @@ pub enum BevySpriteAnimationError {
     #[error("{0} Not Found")]
     NodeNotFound(NodeID),
     #[error("{} Not Found", .0.name_or_id())]
-    AttributeNotFound(Attributes),
+    AttributeNotFound(Attribute),
     #[error("a BincodeError orccored")]
     BincodeError(#[from] bincode::Error),
     #[error("Node Error: {0}")]

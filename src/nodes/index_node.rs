@@ -133,7 +133,7 @@ pub struct IndexNode{
     name: String,
     frames: Vec<Handle<Image>>,
     is_loop: bool,
-    index: Attributes,
+    index: Attribute,
 }
 
 impl IndexNode {
@@ -143,12 +143,12 @@ impl IndexNode {
             name: name.to_string(),
             frames: frames.to_vec(),
             is_loop,
-            index: Attributes::INDEX,
+            index: Attribute::INDEX,
         }
     }
 
     #[inline(always)]
-    pub fn new_with_index(name: &str, frames: &[Handle<Image>], is_loop: bool, index: Attributes) -> IndexNode {
+    pub fn new_with_index(name: &str, frames: &[Handle<Image>], is_loop: bool, index: Attribute) -> IndexNode {
         IndexNode { 
             name: name.to_string(),
             frames: frames.to_vec(),
@@ -175,7 +175,7 @@ impl AnimationNode for IndexNode {
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, Error> {
         assert!(self.frames.len() != 0);
         let mut index = state.try_get_attribute::<usize>(self.index).unwrap_or(0);
-        let frames = state.get_attribute::<usize>(Attributes::FRAMES);
+        let frames = state.get_attribute::<usize>(Attribute::FRAMES);
         index += frames;
         if index >= self.frames.len() {
             if self.is_loop {
@@ -232,7 +232,7 @@ pub use loader::IndexNodeLoader;
 
 #[cfg(feature = "serialize")]
 mod loader {
-use crate::{node_core::NodeLoader, prelude::Attributes};
+use crate::{node_core::NodeLoader, prelude::Attribute};
 use std::collections::HashMap;
 use super::IndexNode;
 
@@ -301,7 +301,7 @@ impl NodeLoader for IndexNodeLoader {
 
         let index = match map.get("index") {
             Some(v) => {ron::from_str(v)?},
-            None => {Attributes::INDEX}
+            None => {Attribute::INDEX}
         };
         
         let is_loop = match map.get("is_loop") {
