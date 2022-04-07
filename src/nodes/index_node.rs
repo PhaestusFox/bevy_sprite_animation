@@ -1,3 +1,4 @@
+use crate::node_core::CanLoad;
 use crate::prelude::*;
 use bevy::prelude::Handle;
 use bevy::prelude::Image;
@@ -133,7 +134,7 @@ pub struct IndexNode{
     name: String,
     frames: Vec<Handle<Image>>,
     is_loop: bool,
-    index: Attribute,
+    index: Attributes,
 }
 
 impl IndexNode {
@@ -143,12 +144,12 @@ impl IndexNode {
             name: name.to_string(),
             frames: frames.to_vec(),
             is_loop,
-            index: Attribute::INDEX,
+            index: Attributes::INDEX,
         }
     }
 
     #[inline(always)]
-    pub fn new_with_index(name: &str, frames: &[Handle<Image>], is_loop: bool, index: Attribute) -> IndexNode {
+    pub fn new_with_index(name: &str, frames: &[Handle<Image>], is_loop: bool, index: Attributes) -> IndexNode {
         IndexNode { 
             name: name.to_string(),
             frames: frames.to_vec(),
@@ -156,9 +157,11 @@ impl IndexNode {
             index,
         }
     }
+}
 
-    #[cfg(feature = "serialize")]
-    pub fn loader() -> Box<dyn NodeLoader> {
+#[cfg(feature = "serialize")]
+impl CanLoad for IndexNode {
+    fn loader() -> Box<dyn NodeLoader> {
         Box::new(IndexNodeLoader)
     }
 }
@@ -174,8 +177,8 @@ impl AnimationNode for IndexNode {
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
         assert!(self.frames.len() != 0);
-        let mut index = state.try_get_attribute::<usize>(self.index).unwrap_or(0);
-        let frames = state.get_attribute::<usize>(Attribute::FRAMES);
+        let mut index = state.try_get_attribute::<usize>(&self.index).unwrap_or(0);
+        let frames = state.get_attribute::<usize>(&Attributes::FRAMES);
         index += frames;
         if index >= self.frames.len() {
             if self.is_loop {
@@ -231,7 +234,7 @@ pub use loader::IndexNodeLoader;
 
 #[cfg(feature = "serialize")]
 mod loader {
-use crate::{node_core::NodeLoader, prelude::Attribute};
+use crate::{node_core::NodeLoader, prelude::Attributes};
 use std::collections::HashMap;
 use super::IndexNode;
 
@@ -300,7 +303,7 @@ impl NodeLoader for IndexNodeLoader {
 
         let index = match map.get("index") {
             Some(v) => {ron::from_str(v)?},
-            None => {Attribute::INDEX}
+            None => {Attributes::INDEX}
         };
         
         let is_loop = match map.get("is_loop") {

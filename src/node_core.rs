@@ -23,6 +23,10 @@ pub trait AnimationNode: Send + Sync
     fn hash(&self) -> u64;
 }
 
+pub trait CanLoad {
+    fn loader() -> Box<dyn NodeLoader>;
+}
+
 #[derive(Debug, Default ,Hash, PartialEq, Eq, Clone, Copy, Reflect)]
 pub struct NodeID(
     u64
@@ -136,7 +140,7 @@ impl std::fmt::Display for NodeResult{
     }
 }
 
-pub trait NodeLoader:'static + Send + Sync {
+pub trait NodeLoader: 'static + Send + Sync {
     fn load(&mut self, data: &str, asset_server: &AssetServer) -> Result<Box<dyn AnimationNode>, crate::error::BevySpriteAnimationError>;
     fn can_load(&self) -> &[&str];
 }

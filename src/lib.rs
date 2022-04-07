@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use node_core::NodeLoader;
+use node_core::CanLoad;
 use crate::error::BevySpriteAnimationError as Error;
 use std::{collections::HashMap, marker::PhantomData};
 use crate::prelude::*;
@@ -124,7 +125,8 @@ impl<F> AnimationNodes<F> {
     }
 
     #[cfg(feature = "serialize")]
-    pub fn registor_node(&mut self, loader: Box<dyn NodeLoader>) {
+    pub fn registor_node<T: CanLoad>(&mut self) {
+        let loader = T::loader();
         if loader.can_load().len() != 1 {
             todo!("Change this so that AnimationNodes has a map of node_type -> Loader so one loader can load more then one type of node and share sate")
         }
@@ -135,6 +137,8 @@ impl<F> AnimationNodes<F> {
         //this does nothing for now but my become a memory leak in the futer if i make loader extentions point to a shaired loader;
         //this would allow a single loader to share a state between multiple nodes of diffrent types being loaded but my allow a loader
         //to have no type left relying on it because the are all now registored lesswere this becomes an implmentaion issue tho
+
+
     }
 
     #[cfg(feature = "serialize")]
