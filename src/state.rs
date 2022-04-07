@@ -28,13 +28,13 @@ impl AnimationState {
     /// or `D` is the wrong type
     /// use try_get_attribute() if you are unsure if the attribute exists
     #[inline(always)]
-    pub fn get_attribute<D: DeserializeOwned>(&self, key: Attributes) -> D {
+    pub fn get_attribute<D: DeserializeOwned>(&self, key: &Attributes) -> D {
         self.try_get_attribute(key).expect("Attribute Exists")
     }
 
     /// will return an `option<D>` attribute panics if `D` is the wrong type
     #[inline(always)]
-    pub fn try_get_attribute<D: DeserializeOwned>(&self, key: Attributes) -> Option<D> {
+    pub fn try_get_attribute<D: DeserializeOwned>(&self, key: &Attributes) -> Option<D> {
         match self.try_get_attribute_or_error(key) {
             Ok(res) => Some(res),
             Err(e) => match e {
@@ -45,8 +45,8 @@ impl AnimationState {
         }
     }
 
-    pub(crate) fn try_get_attribute_or_error<D: DeserializeOwned>(&self, key: Attributes) -> Result<D, Error> {
-        match self.data.get(&key) {
+    pub(crate) fn try_get_attribute_or_error<D: DeserializeOwned>(&self, key: &Attributes) -> Result<D, Error> {
+        match self.data.get(key) {
             Some(att) => {Ok(bincode::deserialize(att)?)},
             None => Err(Error::AttributeNotFound(key.clone()))
         }
