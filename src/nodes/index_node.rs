@@ -1,3 +1,4 @@
+use crate::node_core::CanLoad;
 use crate::prelude::*;
 use bevy::prelude::Handle;
 use bevy::prelude::Image;
@@ -156,9 +157,11 @@ impl IndexNode {
             index,
         }
     }
+}
 
-    #[cfg(feature = "serialize")]
-    pub fn loader() -> Box<dyn NodeLoader> {
+#[cfg(feature = "serialize")]
+impl CanLoad for IndexNode {
+    fn loader() -> Box<dyn NodeLoader> {
         Box::new(IndexNodeLoader)
     }
 }

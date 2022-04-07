@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::node_core::CanLoad;
 use crate::prelude::*;
 use crate::error::BevySpriteAnimationError as Error;
 
@@ -49,8 +50,8 @@ impl<T:MatchType> MatchNode<T> {
 }
 
 #[cfg(feature = "serialize")]
-impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned + Ord> MatchNode<T> {
-    pub fn loader() -> Box<dyn NodeLoader> {
+impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned + Ord> CanLoad for MatchNode<T> {
+    fn loader() -> Box<dyn NodeLoader> {
         Box::new(MatchNodeLoader::<T>::default())
     }
 }

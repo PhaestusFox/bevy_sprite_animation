@@ -2,6 +2,7 @@ use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 use crate::error::BevySpriteAnimationError as Error;
 
+use crate::node_core::CanLoad;
 use crate::prelude::*;
 
 #[derive(bevy_inspector_egui::Inspectable, serde::Serialize, serde::Deserialize, Reflect)]
@@ -31,12 +32,14 @@ impl FPSNode {
         }
     }
 
-    #[cfg(feature = "serialize")]
-    pub fn loader() -> Box<dyn NodeLoader> {
+}
+
+#[cfg(feature = "serialize")]
+impl CanLoad for FPSNode {
+    fn loader() -> Box<dyn NodeLoader> {
         Box::new(FPSNodeLoader)
     }
 }
-
 impl AnimationNode for FPSNode {
     fn name(&self) -> &str {
         &self.name
