@@ -46,13 +46,13 @@ impl AnimationNode for FPSNode {
     }
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
-        let delta = state.get_attribute::<f32>(&Attributes::DELTA);
-        let rem_time = state.try_get_attribute_or_error::<f32>(&Attributes::TIME_ON_FRAME).unwrap_or(0.);
+        let delta = state.get_attribute::<f32>(&Attribute::DELTA);
+        let rem_time = state.try_get_attribute_or_error::<f32>(&Attribute::TIME_ON_FRAME).unwrap_or(0.);
         let time = delta + rem_time;
         let frames = (time / self.frame_time).floor();
         let rem_time = time - self.frame_time * frames;
-        state.set_attribute(Attributes::FRAMES, frames as usize);
-        state.set_attribute(Attributes::TIME_ON_FRAME, rem_time);
+        state.set_attribute(Attribute::FRAMES, frames as usize);
+        state.set_attribute(Attribute::TIME_ON_FRAME, rem_time);
         NodeResult::Next(self.then)
     }
 
@@ -85,6 +85,10 @@ impl AnimationNode for FPSNode {
         let mut hasher = std::collections::hash_map::DefaultHasher::default();
         Hash::hash(self,&mut hasher);
         hasher.finish()
+    }
+
+    fn id(&self) -> NodeID {
+        NodeID::from_str(&self.name)
     }
 }
 

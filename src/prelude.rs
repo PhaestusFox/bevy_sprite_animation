@@ -1,7 +1,7 @@
 pub use super::attributes::Attribute;
 pub use super::state::AnimationState;
 pub use super::AnimationPlugin;
-pub use super::AnimationNodes;
+pub use super::AnimationNodeTree;
 pub use super::node_core::AnimationNode;
 pub use super::node_core::NodeResult;
 pub use super::node_core::NodeID;

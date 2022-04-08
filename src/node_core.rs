@@ -7,9 +7,7 @@ pub trait AnimationNode: Send + Sync
     fn name(&self) -> &str;
     #[cfg(feature = "bevy-inspector-egui")]
     fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool;
-    fn id(&self) -> NodeID {
-        self.name().into()
-    }
+    fn id(&self) -> NodeID;
     #[cfg(feature = "serialize")]
     fn serialize(&self, data: &mut String, asset_server: &AssetServer) -> Result<(), Error> {
         let _ = asset_server;
@@ -39,24 +37,41 @@ impl NodeID {
     pub fn from_u64(id: u64) -> Self {
         NodeID(id)
     }
-    pub fn from_str(id: &str) -> NodeID {
-        let id = if id.starts_with("NodeID(") {
-            &id[7..id.len()-1]
+    pub fn from_str(data: &str) -> NodeID {
+        let data = data.trim();
+        let data = if data.starts_with("NodeID(") {
+            if !data.ends_with(')') {
+                panic!("NodeID: started with 'NodeID(' but did not end with ')'");
+            }
+            &data[7..data.len() - 1]
         } else {
-            id
+            data
         };
-        if id.starts_with("0") {
-        if id[1..].starts_with(|c: char| c == 'x' || c == 'X') {
-            NodeID(u64::from_str_radix(&id[2..], 16).unwrap())
-        } else {
-            NodeID(u64::from_str_radix(id, 10).unwrap())
-        }
+        let id = if data.starts_with(|c: char| {c.is_digit(10)}) {
+            NodeID::from_digit(data)
         } else {
             use std::hash::Hash;
             use std::hash::Hasher;
-            let mut hasher = std::collections::hash_map::DefaultHasher::new();
-            id.hash(&mut hasher);
+            let mut hasher = std::collections::hash_map::DefaultHasher::default();
+            data.hash(&mut hasher);
             NodeID(hasher.finish())
+        };
+        id
+    }
+
+    fn from_digit(from: &str) -> NodeID {
+        let from = from.trim();
+        if from.starts_with("0x") || from.starts_with("0X") {
+            NodeID::from_u64(u64::from_str_radix(&from[2..], 16).expect("NodeID: failed to parse hexadecimal"))
+        } 
+        else if from.starts_with("0b") || from.starts_with("0B") {
+            NodeID::from_u64(u64::from_str_radix(&from[2..], 2).expect("NodeID: failed to parse binary"))
+        }
+        else if from.starts_with("0o") || from.starts_with("0O") {
+            NodeID::from_u64(u64::from_str_radix(&from[2..], 8).expect("NodeID: failed to parse octal"))
+        }
+        else {
+            NodeID::from_u64(u64::from_str_radix(from, 10).expect("NodeID: failed to parse decimal"))
         }
     }
 }
@@ -71,7 +86,7 @@ mod serde {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer {
-        NodeID(format!("{:#020X}", self.0)).serialize(serializer)
+        NodeID(format!("{:#018X}", self.0)).serialize(serializer)
     }
     }
 
@@ -86,7 +101,6 @@ mod serde {
     }
 }
 
-
 #[cfg(feature = "bevy-inspector-egui")]
 impl bevy_inspector_egui::Inspectable for NodeID {
     type Attributes = ();
@@ -100,26 +114,6 @@ impl bevy_inspector_egui::Inspectable for NodeID {
 impl std::fmt::Display for NodeID {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!("NodeID({:#020X})",self.0))
-    }
-}
-
-impl Into<NodeID> for &str{
-    fn into(self) -> NodeID {
-        use std::hash::Hash;
-        use std::hash::Hasher;
-        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        self.hash(&mut hasher);
-        NodeID(hasher.finish())
-    }
-}
-
-impl Into<NodeID> for String {
-    fn into(self) -> NodeID {
-        use std::hash::Hash;
-        use std::hash::Hasher;
-        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        self.hash(&mut hasher);
-        NodeID(hasher.finish())
     }
 }
 

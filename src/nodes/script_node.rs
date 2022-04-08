@@ -1,4 +1,28 @@
-use crate::{prelude::{NodeID, Attribute, AnimationNode, NodeResult}, state::AnimationState};
+use bevy::prelude::AssetServer;
+
+use crate::{prelude::{NodeID, Attribute, AnimationNode, NodeResult, BevySpriteAnimationError}, state::AnimationState};
+
+#[cfg(test)]
+mod test {
+    use crate::test::test_asset_server;
+    use super::*;
+
+    #[test]
+    #[cfg(feature = "serialize")]
+    fn serialize_deserialize() {
+        use crate::node_core::CanLoad;
+        let asset_server = test_asset_server();
+        let node = ScriptNode::new("#id NodeID(0x1) #fallback NodeID(Zombie{i}_Idle) if Index(Stand) >= 6 set Attribute(ZombieState) [00000000] return NodeID(Zombie{i}_StandF)");
+        //let mut nodetree = AnimationNodes<Test>::default();
+
+        
+        let mut data = String::new();
+        node.serialize(&mut data, &asset_server).unwrap();
+        println!("\n\n{}\n\n", data);
+        let test_node = ScriptNode::loader().load(&mut data, &asset_server).unwrap();
+        assert_eq!(node.hash(), test_node.hash());
+    }
+}
 
 impl AnimationNode for ScriptNode {
     fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
@@ -19,7 +43,7 @@ impl AnimationNode for ScriptNode {
                         _ => {panic!("unimplemented `set {:?}`", self.tokens[index + 1])}
                     };
                     if let Token::Raw(v) = &self.tokens[index + 2] {
-                        let data = state.get_attribute_raw_mut(key);
+                        let data = state.get_attribute_raw_mut(&key);
                         *data = v.clone();
                     } else {panic!("unimplemented `set {:?} = {:?}`", key, self.tokens[index + 2])};
                     index += 3;
@@ -27,11 +51,15 @@ impl AnimationNode for ScriptNode {
                 Token::Return(id) => {
                     return NodeResult::Next(id);
                 }
-                _ => todo!("Token {:?}", self.tokens[index])
+                _ => {
+                    bevy::log::info!("pointer {}", index);
+                    bevy::log::info!("statck = {:?}", self.tokens);
+                    todo!("Token {:?}", self.tokens[index])
+                }
             }
-            index += 1;
         }
         if let Some(fallback) = self.fallback {
+            bevy::log::warn!("fallback {:?} used", fallback);
             NodeResult::Next(fallback)
         }
         else {
@@ -75,7 +103,6 @@ impl AnimationNode for ScriptNode {
         for tag in self.tags.iter() {
             if let Tag::Name(name) = tag {
                 has_name = Some(name);
-                break;
             }
             if let Tag::ID(id) = tag {
                 return *id;
@@ -95,6 +122,26 @@ impl AnimationNode for ScriptNode {
             }
             NodeID::from_u64(hasher.finish())
         }
+    }
+
+    fn serialize(&self, data: &mut String, _: &AssetServer) -> Result<(), BevySpriteAnimationError> {
+        data.push_str("ScriptNode(");
+        data.push(' ');
+        for tag in self.tags.iter() {
+            data.push_str(&tag.to_string());
+            data.push('\n');
+        }
+        if self.fallback.is_some() {
+            data.push_str("#fallback ");
+            data.push_str(&self.fallback.unwrap().to_string());
+            data.push('\n');
+        }
+        for token in self.tokens.iter() {
+            data.push_str(&token.to_string());
+            data.push(' ');
+        }
+        data.push_str("),\n\t");
+        Ok(())
     }
 }
 
@@ -127,10 +174,52 @@ enum Token {
     Unknown(String),
 }
 
+impl ToString for Token {
+    fn to_string(&self) -> String {
+        match self {
+            Token::Return(id) => format!("return {}", id),
+            Token::Int(i) => format!("{}", i),
+            Token::Equals => "==".to_string(),
+            Token::NotEquals => "!=".to_string(),
+            Token::LessThen => "<".to_string(),
+            Token::LestThenEq => "<=".to_string(),
+            Token::GratterThen => ">".to_string(),
+            Token::GratterThenEq => ">=".to_string(),
+            Token::Plus => "+".to_string(),
+            Token::Minus => "-".to_string(),
+            Token::String(s) => format!("\"{}\"", s),
+            Token::Raw(v) => {
+                let mut res = String::with_capacity(v.len() * 2 + 2);
+                res.push('[');
+                for b in v {
+                    res.push_str(&format!("{:#04X}", b)[2..]);
+                }
+                res.push(']');
+                res
+                },
+            Token::If => "if".to_string(),
+            Token::Else => "else".to_string(),
+            Token::Set => "set".to_string(),
+            Token::Attribute(att) => format!("{}", att),
+            Token::Index(att) => format!("{}", att),
+            _ => panic!("unimplemented `to_string` for {:?}", self)
+        }
+    }
+}
+
 #[derive(Debug, Hash, PartialEq, Eq)]
 enum Tag {
     Name(String),
     ID(NodeID),
+}
+
+impl ToString for Tag {
+    fn to_string(&self) -> String {
+        match self {
+            Tag::Name(name) => format!("#name \"{}\"", name),
+            Tag::ID(id) => format!("#id {}", id),
+        }
+    }
 }
 
 pub struct ScriptNode {
@@ -143,6 +232,10 @@ impl ScriptNode {
     pub fn new(script: &str) -> ScriptNode {
         let mut tokens = Vec::new();
         let mut tags = Vec::new();
+        let script = script.trim();
+        let script = if script.starts_with('(') {
+            &script[1..script.len()-1]
+        } else { script };
         let mut words = script.split_whitespace().peekable();
         let mut open = 0;
         let mut closed = 0;
@@ -150,7 +243,7 @@ impl ScriptNode {
         let mut fallback = None;
 
         while let Some(first) = words.peek() {
-            if first.starts_with("#") {
+            if first.trim().starts_with("#") {
                 let first = &words.next().unwrap()[1..];
                 match first {
                     "name" => {
@@ -183,10 +276,9 @@ impl ScriptNode {
         }
 
         while let Some(word) = words.next() {
-            println!("parsing {}", word);
             if word.starts_with("Attribute(") {
                 if word.ends_with(')') {
-                    tokens.push(Token::Attribute(Attribute::from_str(&word[10..word.len() - 1])));
+                    tokens.push(Token::Attribute(Attribute::from_str(word)));
                 } else {
                     let mut name = word[10..].to_string();
                     while !name.ends_with(')') {
@@ -194,7 +286,7 @@ impl ScriptNode {
                         name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
                     }
                     name.pop();
-                    tokens.push(Token::Attribute(Attribute::new_attribute(name)));
+                    tokens.push(Token::Attribute(Attribute::from_str(&name)));
                 }
                 continue;
             }
@@ -208,7 +300,7 @@ impl ScriptNode {
                         name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
                     }
                     name.pop();
-                    tokens.push(Token::Attribute(Attribute::new_index(name)));
+                    tokens.push(Token::Attribute(Attribute::new_index(&name)));
                 }
                 continue;
             }
@@ -236,6 +328,7 @@ impl ScriptNode {
                 } else {
                     tokens.push(Token::Int(word.parse().expect("proper int format")));
                 }
+                continue;
             }
             if word.starts_with('"') {
                 let mut string = String::new();
@@ -344,5 +437,36 @@ fn if_condishion(state: &AnimationState, lhs: &Token, op: &Token, rhs: &Token) -
         }
         (Token::Index(_), _) => {panic!("unsupported operator for index")},
         (_, _) => todo!("unsupported")
+    }
+}
+
+#[cfg(feature = "serialize")]
+mod serialize {
+    use bevy::prelude::AssetServer;
+    use crate::error::BevySpriteAnimationError as Error;
+    use crate::{node_core::CanLoad, prelude::{NodeLoader, AnimationNode}};
+    use super::ScriptNode;
+
+    impl CanLoad for ScriptNode {
+        fn loader() -> Box<dyn NodeLoader> {
+            Box::new(ScriptNodeLoader)
+        }
+    }
+    pub struct ScriptNodeLoader;
+
+    impl NodeLoader for ScriptNodeLoader {
+        fn load(&mut self, data: &str, _: &AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
+            let data = data.trim();
+            let data = if data.starts_with("ScriptNode(") {
+                if !data.ends_with(')') {return Err(Error::MalformedStr { message: format!("Found ScriptNode( but failed to find Closing ')'"), location: crate::here!() })};
+                &data[data.find("ScriptNode(").unwrap() + 11..data.len() - 1]
+            } else {
+                &data
+            };
+            Ok(Box::new(ScriptNode::new(data)))
+        }
+        fn can_load(&self) -> &[&str] {
+            &["ScriptNode"]
+        }
     }
 }

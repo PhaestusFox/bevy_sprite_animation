@@ -14,6 +14,13 @@ pub mod node_core;
 pub mod nodes;
 pub mod state;
 
+#[cfg(test)]
+mod test{
+    pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
+        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets"), bevy::tasks::TaskPool::new())
+    }
+}
+
 pub struct AnimationPlugin<Flag>{
     marker: PhantomData<Flag>
 }
@@ -26,11 +33,12 @@ impl<F: 'static + Send + Sync> Default for AnimationPlugin<F> {
 
 impl<F:'static + Send + Sync + Component> Plugin for AnimationPlugin<F> {
     fn build(&self, app: &mut App) {
-        app.insert_resource(AnimationNodes::<F>::default());
-        app.add_plugin(bevy_inspector_egui::InspectorPlugin::<AnimationNodes<F>>::default());
+        app.insert_resource(AnimationNodeTree::<F>::default());
+        app.add_plugin(bevy_inspector_egui::InspectorPlugin::<AnimationNodeTree<F>>::default());
         app.add_system(animation_system::<F>.label("AnimationUpdate"));
         app.add_system(state::update_delta::<F>.before("AnimationUpdate"));
         app.add_system_to_stage(CoreStage::First, state::clear_changed);
+        app.add_system_to_stage(CoreStage::PostUpdate, state::flip_update);
         app.add_system_to_stage(CoreStage::Last, state::clear_unchanged_temp);
     }
 }
@@ -40,7 +48,7 @@ pub struct StartNode(node_core::NodeID);
 
 impl StartNode {
     pub fn from_str(name: &str) -> StartNode {
-        StartNode(name.into())
+        StartNode(NodeID::from_str(name))
     }
     pub fn from_u64(id: u64) -> StartNode {
         StartNode(NodeID::from_u64(id))
@@ -53,16 +61,16 @@ impl StartNode {
     }
 }
 
-pub struct AnimationNodes<F> {
+pub struct AnimationNodeTree<F> {
     nodes: HashMap<node_core::NodeID, Box<dyn node_core::AnimationNode>>,
     #[cfg(feature = "serialize")]
     loaders: HashMap<String, Box<dyn NodeLoader>>,
     marker: PhantomData<F>,
 }
 
-impl<F> Default for AnimationNodes<F> {
-    fn default() -> AnimationNodes<F> {
-        AnimationNodes {
+impl<F> Default for AnimationNodeTree<F> {
+    fn default() -> AnimationNodeTree<F> {
+        AnimationNodeTree {
             nodes: HashMap::new(),
             #[cfg(feature = "serialize")]
             loaders: default_loaders(),
@@ -76,10 +84,11 @@ fn default_loaders() -> HashMap<String, Box<dyn NodeLoader>> {
     let mut map: HashMap<String, Box<dyn NodeLoader>> = HashMap::new();
     map.insert("IndexNode".to_string(),IndexNode::loader());
     map.insert("FPSNode".to_string(), FPSNode::loader());
+    map.insert("ScriptNode".to_string(), ScriptNode::loader());
     map
 }
 
-impl<F> bevy_inspector_egui::Inspectable for AnimationNodes<F> {
+impl<F> bevy_inspector_egui::Inspectable for AnimationNodeTree<F> {
     type Attributes = ();
 
     fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _: Self::Attributes, context: &mut bevy_inspector_egui::Context) -> bool {
@@ -92,7 +101,7 @@ impl<F> bevy_inspector_egui::Inspectable for AnimationNodes<F> {
     }
 }
 
-impl<F> AnimationNodes<F> {
+impl<F> AnimationNodeTree<F> {
     pub fn get_node(&self, id: NodeID) -> Option<&Box<dyn node_core::AnimationNode>> {
         self.nodes.get(&id)
     }
@@ -249,7 +258,7 @@ impl<F> AnimationNodes<F> {
 }
 
 fn animation_system<Flag: Component>(
-    nodes: Res<AnimationNodes<Flag>>,
+    nodes: Res<AnimationNodeTree<Flag>>,
     mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode), With<Flag>>
 ){
     for (mut state,mut handle, start) in query.iter_mut() {

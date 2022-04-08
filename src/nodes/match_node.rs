@@ -63,7 +63,7 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
 
         let val = match state.try_get_attribute_or_error::<T>(&self.check) {
             Ok(x) => x,
-            Err(e) => return NodeResult::Error(e),
+            Err(e) => return NodeResult::Error(format!("{}",e)),
         };
 
         if let Some(next) = self.pairs.get(&val) {
@@ -115,6 +115,10 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
         let mut hasher = std::collections::hash_map::DefaultHasher::default();
         Hash::hash(self,&mut hasher);
         hasher.finish()
+    }
+
+    fn id(&self) -> NodeID {
+        NodeID::from_str(&self.name)
     }
 }
 
