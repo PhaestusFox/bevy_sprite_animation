@@ -1,0 +1,158 @@
+[
+ScriptNode( #id NodeID(0x001E527169B5475656)
+#fallback NodeID(0x00FADC5C6B7FF01B5F)
+if Index(Stand) >= 6 set Attribute(ZombieState) [00000000] return NodeID(0x00519844F358272E11) ),
+	ScriptNode( #id NodeID(0x0025AC21264ABCB025)
+#fallback NodeID(0x00FADC5C6B7FF01B5F)
+if Index(Stand) >= 6 set Attribute(ZombieState) [00000000] return NodeID(0x00CB505F244CC96683) ),
+	ScriptNode( #id NodeID(0x008EA5288868FD8F3A)
+#fallback NodeID(0x00FADC5C6B7FF01B5F)
+if Index(Attack) >= 10 set Attribute(ZombieState) [00000000] return NodeID(0x003F5CC3C082956460) ),
+	ScriptNode( #id NodeID(0x006EE62A603E81AD8B)
+#fallback NodeID(0x00FADC5C6B7FF01B5F)
+if Index(Fall) >= 5 set Attribute(ZombieState) [08000000] return NodeID(0x00D4FFC8686B9FE74F) ),
+	ScriptNode( #id NodeID(0x009F4BD19B423E940A)
+#fallback NodeID(0x00FADC5C6B7FF01B5F)
+if Index(Fall) >= 6 set Attribute(ZombieState) [09000000] return NodeID(0x0035FC421AADA3D9B8) ),
+	NodeID("0x0000000000000001"):MatchNode<zombie::animation::ZState>(
+	name: "Zombie1_SwitchNode",
+	check: AttributeName("ZombieState"),
+	default: ("0xFADC5C6B7FF01B5F"),
+	pairs: [
+	(LayingF, ("0xD4FFC8686B9FE74F")),
+	(Idle, ("0xFADC5C6B7FF01B5F")),
+	(StandB, ("0x25AC21264ABCB025")),
+	(LayingB, ("0x35FC421AADA3D9B8")),
+	(StandF, ("0x1E527169B5475656")),
+	(FallB, ("0x9F4BD19B423E940A")),
+	(FallF, ("0x6EE62A603E81AD8B")),
+	(Walking, ("0x1700B9C67B93A42F")),
+	(Attacking, ("0x8EA5288868FD8F3A")),
+	(Running, ("0x523587637DC7A79D")),
+	(Test, ("0x000000000000000C")),
+	],
+),IndexNode(
+	name: "Zombie1_Idle",
+	frames: [
+	Zombie1/zombie1_00000.png,
+	Zombie1/zombie1_00001.png,
+	Zombie1/zombie1_00002.png,
+	Zombie1/zombie1_00003.png,
+	Zombie1/zombie1_00004.png,
+	Zombie1/zombie1_00005.png,
+	Zombie1/zombie1_00006.png,
+	Zombie1/zombie1_00007.png,
+	Zombie1/zombie1_00008.png,
+	],
+	is_loop: true,
+	index: IndexID(256),
+	),
+IndexNode(
+	name: "Zombie1_Walking",
+	frames: [
+	Zombie1/zombie1_00009.png,
+	Zombie1/zombie1_00010.png,
+	Zombie1/zombie1_00011.png,
+	Zombie1/zombie1_00012.png,
+	Zombie1/zombie1_00013.png,
+	Zombie1/zombie1_00014.png,
+	Zombie1/zombie1_00015.png,
+	Zombie1/zombie1_00016.png,
+	Zombie1/zombie1_00017.png,
+	Zombie1/zombie1_00018.png,
+	Zombie1/zombie1_00019.png,
+	Zombie1/zombie1_00020.png,
+	],
+	is_loop: true,
+	index: IndexID(256),
+	),
+IndexNode(
+	name: "Zombie1_Running",
+	frames: [
+	Zombie1/zombie1_00021.png,
+	Zombie1/zombie1_00022.png,
+	Zombie1/zombie1_00023.png,
+	Zombie1/zombie1_00024.png,
+	Zombie1/zombie1_00025.png,
+	Zombie1/zombie1_00026.png,
+	Zombie1/zombie1_00027.png,
+	Zombie1/zombie1_00028.png,
+	],
+	is_loop: true,
+	index: IndexID(256),
+	),
+IndexNode(
+	name: "Zombie1_Attacking",
+	frames: [
+	Zombie1/zombie1_00029.png,
+	Zombie1/zombie1_00030.png,
+	Zombie1/zombie1_00031.png,
+	Zombie1/zombie1_00032.png,
+	Zombie1/zombie1_00033.png,
+	Zombie1/zombie1_00034.png,
+	Zombie1/zombie1_00035.png,
+	Zombie1/zombie1_00036.png,
+	Zombie1/zombie1_00037.png,
+	Zombie1/zombie1_00038.png,
+	Zombie1/zombie1_00039.png,
+	],
+	is_loop: true,
+	index: IndexName("Attack"),
+	),
+IndexNode(
+	name: "Zombie1_FallF",
+	frames: [
+	Zombie1/zombie1_00040.png,
+	Zombie1/zombie1_00041.png,
+	Zombie1/zombie1_00042.png,
+	Zombie1/zombie1_00043.png,
+	Zombie1/zombie1_00044.png,
+	Zombie1/zombie1_00045.png,
+	],
+	is_loop: false,
+	index: IndexName("Fall"),
+	),
+IndexNode(
+	name: "Zombie1_StandF",
+	frames: [
+	Zombie1/zombie1_00046.png,
+	Zombie1/zombie1_00047.png,
+	Zombie1/zombie1_00048.png,
+	Zombie1/zombie1_00049.png,
+	Zombie1/zombie1_00050.png,
+	Zombie1/zombie1_00051.png,
+	Zombie1/zombie1_00052.png,
+	],
+	is_loop: false,
+	index: IndexName("Stand"),
+	),
+IndexNode(
+	name: "Zombie1_FallB",
+	frames: [
+	Zombie1/zombie1_00053.png,
+	Zombie1/zombie1_00054.png,
+	Zombie1/zombie1_00055.png,
+	Zombie1/zombie1_00056.png,
+	Zombie1/zombie1_00057.png,
+	Zombie1/zombie1_00058.png,
+	Zombie1/zombie1_00059.png,
+	],
+	is_loop: false,
+	index: IndexName("Fall"),
+	),
+IndexNode(
+	name: "Zombie1_StandB",
+	frames: [
+	Zombie1/zombie1_00060.png,
+	Zombie1/zombie1_00061.png,
+	Zombie1/zombie1_00062.png,
+	Zombie1/zombie1_00063.png,
+	Zombie1/zombie1_00064.png,
+	Zombie1/zombie1_00065.png,
+	Zombie1/zombie1_00066.png,
+	Zombie1/zombie1_00067.png,
+	],
+	is_loop: false,
+	index: IndexName("Stand"),
+	),
+]

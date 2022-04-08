@@ -69,20 +69,20 @@ fn add_animator(
     //create a default state
     let mut state = AnimationState::default();
     //set starting Attributes
-    start.set_attribute(Attributes::Loop, true);
+    start.set_attribute(Attribute::FLIP_X, true);
     //you can use custom Attributes
-    //custom attributes can be any type that implments serde::serialize and serde::deserializeOwned
-    start.set_attribute(Attributes::from_str("custom_attribute"), "cat");
-    //if you use new_custom the name will be stored for debuging and sierialization
-    start.set_attribute(Attributes::new_custom("specil_attribute"), 5);
+    //attributes can be any type that implments serde::serialize and serde::deserializeOwned
+    start.set_attribute(Attribute::from_str("custom_attribute"), "cat");
+    //if you use a custom attribute the name will be stored for debuging and sierialization
+    start.set_attribute(Attribute::new_attribute("specil_attribute"), 5);
 
     //set temperary attribute
     //these will be removed if they are not changed each frame
-    state.set_temporary(Attributes::from_str("Index(Idel)"));
+    state.set_temporary(Attribute::from_str("Index(Idel)"));
 
     //remove temperary attribute
     //by default all attributes are persistent
-    state.set_persistent(Attributes::from_str("Index(Idel)"));
+    state.set_persistent(Attribute::from_str("Index(Idel)"));
 
     //add a sprite bundle
     commands.spawn_bundle(SpriteBundle::default())

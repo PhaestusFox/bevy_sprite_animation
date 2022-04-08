@@ -34,7 +34,6 @@ impl<F: 'static + Send + Sync> Default for AnimationPlugin<F> {
 impl<F:'static + Send + Sync + Component> Plugin for AnimationPlugin<F> {
     fn build(&self, app: &mut App) {
         app.insert_resource(AnimationNodeTree::<F>::default());
-        app.add_plugin(bevy_inspector_egui::InspectorPlugin::<AnimationNodeTree<F>>::default());
         app.add_system(animation_system::<F>.label("AnimationUpdate"));
         app.add_system(state::update_delta::<F>.before("AnimationUpdate"));
         app.add_system_to_stage(CoreStage::First, state::clear_changed);
@@ -155,6 +154,15 @@ impl<F> AnimationNodeTree<F> {
         use std::fs;
         use std::path::PathBuf;
         let path: PathBuf = path.into();
+
+        let path = if path.is_relative() {
+            let mut new_path = PathBuf::from("./assets");
+            new_path.push(path);
+            new_path
+        } else {
+            path
+        };
+
         let tree = if let Some(ext) = path.as_path().extension() {
             let t = ext == "nodetree";
             if !(ext == "node" || t) {
