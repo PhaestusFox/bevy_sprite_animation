@@ -30,7 +30,16 @@ pub struct NodeID(
     u64
 );
 
+use std::collections::HashMap;
+lazy_static::lazy_static! {
+    static ref NODE_ID_NAMES: std::sync::Mutex<HashMap<NodeID, String>> = {
+        let mut map = HashMap::new();
+        std::sync::Mutex::new(map)
+    };
+}
+
 impl NodeID {
+
     pub fn as_u64(self) -> u64 {
         self.0
     }
@@ -50,16 +59,30 @@ impl NodeID {
         let id = if data.starts_with(|c: char| {c.is_digit(10)}) {
             NodeID::from_digit(data)
         } else {
-            use std::hash::Hash;
-            use std::hash::Hasher;
-            let mut hasher = std::collections::hash_map::DefaultHasher::default();
-            data.hash(&mut hasher);
-            while hasher.finish() < 65536 {
-                hasher.write_u8(0);
-            }
-            NodeID(hasher.finish())
+           NodeID::from_name(data)
         };
         id
+    }
+
+    pub fn from_name(name: &str) -> NodeID{
+        let name = name.trim();
+        let id = NodeID::hash_name(name);
+        let mut names = NODE_ID_NAMES.lock().unwrap();
+        if !names.contains_key(&id) {
+            names.insert(id, name.to_string());
+        }
+        id
+    }
+
+    fn hash_name(name: &str) -> NodeID {
+        use std::hash::Hash;
+        use std::hash::Hasher;
+        let mut hasher = std::collections::hash_map::DefaultHasher::default();
+        name.hash(&mut hasher);
+        while hasher.finish() < 65536 {
+            hasher.write_u8(0);
+        }
+        NodeID(hasher.finish())
     }
 
     fn from_digit(from: &str) -> NodeID {
@@ -75,6 +98,22 @@ impl NodeID {
         }
         else {
             NodeID::from_u64(u64::from_str_radix(from, 10).expect("NodeID: failed to parse decimal"))
+        }
+    }
+
+    pub fn name(&self) -> Option<String> {
+        if let Some(v) = NODE_ID_NAMES.lock().unwrap().get(self) {
+            Some(v.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn name_or_id(&self) -> String {
+        if let Some(name) = self.name() {
+            name
+        } else {
+            format!("NodeID({:#018X})", self.0)
         }
     }
 }
