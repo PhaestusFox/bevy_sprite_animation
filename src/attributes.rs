@@ -9,131 +9,176 @@ mod test{
 
     #[test]
     fn custom_from_str() {
-        let test = Attribute::new_attribute("Test".to_string());
-        assert_eq!(test, Attribute::new_attribute("Test".to_string()));
+        let test = Attribute::new_attribute("Test");
+        assert_eq!(test, Attribute::new_attribute("Test"));
         assert_eq!(test, Attribute::from_str("Test"));
-        assert_eq!(test, Attribute::from_str("Custom(Test)"));
+        assert_eq!(test, Attribute::from_str("Attribute(Test)"));
+    }
+
+    #[test]
+    fn statics_work() {
+        assert_eq!(Attribute::DELTA, Attribute::new_attribute("Delta"));
+        assert_eq!(Attribute::DELTA, Attribute::from_str("Delta"));
+        assert_eq!(Attribute::DELTA, Attribute::from_str("Core(Delta)"));
+        assert_ne!(Attribute::DELTA, Attribute::new_attribute("Attribute(Delta)"));
+        assert_eq!(Attribute::FRAMES, Attribute::new_attribute("Frames"));
+        assert_eq!(Attribute::FRAMES, Attribute::from_str("Frames"));
+        assert_eq!(Attribute::FRAMES, Attribute::from_str("Core(Frames)"));
+        assert_ne!(Attribute::FRAMES, Attribute::new_attribute("Attribute(Frames)"));
+        assert_ne!(Attribute::TIME_ON_FRAME, Attribute::new_attribute("FrameTime"));
+        assert_eq!(Attribute::TIME_ON_FRAME, Attribute::from_str("FrameTime"));
+        assert_eq!(Attribute::TIME_ON_FRAME, Attribute::from_str("Core(FrameTime)"));
+        assert_ne!(Attribute::TIME_ON_FRAME, Attribute::from_str("Attribute(FrameTime)"));
     }
 
     #[test]
     fn index_from_str() {
-        let test = Attribute::new_index("Test".to_string());
+        let test = Attribute::new_index("Test");
         assert!(test.0 < 65536);
-        assert_eq!(test, Attribute::new_index("Test".to_string()));
+        assert_eq!(test, Attribute::new_index("Test"));
         assert_eq!(test, Attribute::from_str("Index(Test)"));
         assert_ne!(test, Attribute::from_str("Test"));
-        assert_ne!(test, Attribute::new_attribute("Test".to_string()));
+        assert_ne!(test, Attribute::new_attribute("Test"));
     }
 }
 
-#[derive(Debug, Hash, PartialEq, Eq, bevy_inspector_egui::Inspectable, Clone, Copy, Reflect, PartialOrd, Ord)]
+#[derive(Default, Hash, PartialEq, Eq, bevy_inspector_egui::Inspectable, Clone, Copy, Reflect, PartialOrd, Ord)]
 #[reflect_value(Serialize, Deserialize)]
 pub struct Attribute(u64);
 
 impl Attribute {
-    pub const DELTA: Attribute = Attribute(0);
-    pub const FRAMES: Attribute = Attribute(1);
-    pub const TIME_ON_FRAME: Attribute = Attribute(2);
+    pub const NULL: Attribute = Attribute(0);
+    pub const DELTA: Attribute = Attribute(1);
+    pub const FRAMES: Attribute = Attribute(2);
+    pub const TIME_ON_FRAME: Attribute = Attribute(3);
+    pub const FLIP_X: Attribute = Attribute(4);
+    pub const FLIP_Y: Attribute = Attribute(5);
     pub const INDEX: Attribute = Attribute(256);
+}
+
+impl std::fmt::Display for Attribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.name_or_id())
+    }
+}
+
+impl std::fmt::Debug for Attribute {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.name_or_id())
+    }
 }
 
 impl serde::Serialize for Attribute {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer {
-        let serde: AttributesSerde = self.into();
+        let serde: AttributeSerde = self.into();
         serde.serialize(serializer)
     }
 }
 
-impl Into<AttributesSerde> for &Attribute {
-    fn into(self) -> AttributesSerde {
+impl Into<AttributeSerde> for &Attribute {
+    fn into(self) -> AttributeSerde {
         if self.0 < 256 {
             match self.0 {
-            0 => AttributesSerde::Delta,
-            1 => AttributesSerde::Frames,
-            2 => AttributesSerde::FrameTime,
+            1 => AttributeSerde::Delta,
+            2 => AttributeSerde::Frames,
+            3 => AttributeSerde::FrameTime,
+            4 => AttributeSerde::FlipX,
+            5 => AttributeSerde::FlipY,
             _ => panic!("Reserved for futer use")
             }
         } else if self.0 < 65536 {
             match self.name() {
-                Some(n) => {AttributesSerde::IndexName(n)},
-                None => {AttributesSerde::IndexID(self.0 as u16)},
+                Some(n) => {AttributeSerde::IndexName(n)},
+                None => {AttributeSerde::IndexID(self.0 as u16)},
             }
         } else {
             match self.name() {
-                Some(n) => {AttributesSerde::CustomName(n)},
-                None => {AttributesSerde::CustomID(self.0)},
+                Some(n) => {AttributeSerde::AttributeName(n)},
+                None => {AttributeSerde::AttributeID(self.0)},
             }
         }
     }
 }
 
-impl Into<Attribute> for AttributesSerde {
+impl Into<Attribute> for AttributeSerde {
     fn into(self) -> Attribute {
         match self {
-            AttributesSerde::IndexID(id) => Attribute(id as u64),
-            AttributesSerde::IndexName(name) => Attribute::new_index(name),
-            AttributesSerde::Delta => Attribute::DELTA,
-            AttributesSerde::FrameTime => Attribute::TIME_ON_FRAME,
-            AttributesSerde::Frames => Attribute::FRAMES,
-            AttributesSerde::CustomName(name) => Attribute::new_attribute(name),
-            AttributesSerde::CustomID(r) => Attribute(r),
-            _ => panic!()
+            AttributeSerde::IndexID(id) => Attribute(id as u64),
+            AttributeSerde::IndexName(name) => Attribute::new_index(&name),
+            AttributeSerde::Delta => Attribute::DELTA,
+            AttributeSerde::FrameTime => Attribute::TIME_ON_FRAME,
+            AttributeSerde::Frames => Attribute::FRAMES,
+            AttributeSerde::FlipX => Attribute::FLIP_X,
+            AttributeSerde::FlipY => Attribute::FLIP_Y,
+            AttributeSerde::AttributeName(name) => Attribute::new_attribute(&name),
+            AttributeSerde::AttributeID(r) => Attribute(r),
         }
     }
 }
 
 #[derive(Debug, serde::Serialize, serde::Deserialize)]
-enum AttributesSerde {
-    Loop,
+enum AttributeSerde {
     IndexID(u16),
     IndexName(String),
     Delta,
     FrameTime,
     Frames,
-    Next,
-    CustomID(u64),
-    CustomName(String),
+    FlipX,
+    FlipY,
+    AttributeID(u64),
+    AttributeName(String),
 }
 
 impl<'de> serde::Deserialize<'de> for Attribute {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de> {
-        let serde: AttributesSerde = serde::Deserialize::deserialize(deserializer)?;
+        let serde: AttributeSerde = serde::Deserialize::deserialize(deserializer)?;
         Ok(serde.into())
-    }
-}
-
-impl Default for Attribute {
-    fn default() -> Attribute {
-        Attribute(0)
     }
 }
 
 lazy_static::lazy_static! {
     static ref CUSTOMATTRIBUTES: std::sync::Mutex<HashMap<Attribute, String>> = {
         let mut map = HashMap::new();
-        map.insert(Attribute::DELTA,       "Delta".to_string());
-        map.insert(Attribute::TIME_ON_FRAME,   "FrameTime".to_string());
-        map.insert(Attribute::FRAMES,      "Frames".to_string());
+        map.insert(Attribute::NULL,             "null".to_string());
+        map.insert(Attribute::DELTA,            "Delta".to_string());
+        map.insert(Attribute::TIME_ON_FRAME,    "FrameTime".to_string());
+        map.insert(Attribute::FRAMES,           "Frames".to_string());
+        map.insert(Attribute::FLIP_X,           "FlipX".to_string());
+        map.insert(Attribute::FLIP_Y,           "FlipY".to_string());
         std::sync::Mutex::new(map)
     };
 }
 
 impl Attribute {
+
+    /// Returns the attribute for the given Index name
+    /// adds the name to the list of known names if it is not already there
+    /// use from_str to get the attribute from a string
     #[inline(always)]
-    pub fn new_attribute(name: String) -> Attribute{
-        let att = Attribute(Attribute::hash_for_custom(&name));
-        CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
+    pub fn new_index(name: &str) -> Attribute{
+        let mut map = CUSTOMATTRIBUTES.lock().unwrap();
+        let att = Attribute(Attribute::hash_for_index(name));
+        if !map.contains_key(&att) {
+            map.insert(att, name.to_string());
+        }
         att
     }
 
+    /// Returns the attribute for the given name
+    /// adds the name to the list of known names if it is not already there
+    /// use from_str to get the attribute from a string
+
     #[inline(always)]
-    pub fn new_index(name: String) -> Attribute{
-        let att = Attribute(Attribute::hash_for_index(&name));
-        CUSTOMATTRIBUTES.lock().unwrap().insert(att, name.to_string());
+    pub fn new_attribute(name: &str) -> Attribute{
+        let mut map = CUSTOMATTRIBUTES.lock().unwrap();
+        let att = Attribute(Attribute::hash_for_custom(name));
+        if !map.contains_key(&att) {
+            map.insert(att, name.to_string());
+        }
         att
     }
 
@@ -165,6 +210,7 @@ impl Attribute {
         res as u64
     }
 
+    /// Returns the name of the attribute or None if a custom attribute that is not in the list
     pub fn name(&self) -> Option<String> {
         if let Some(v) = CUSTOMATTRIBUTES.lock().unwrap().get(self) {
             Some(v.clone())
@@ -173,39 +219,81 @@ impl Attribute {
         }
     }
 
+    /// Returns the name of the attribute or its inner u64 hex if it is a custom attribute that is not in the list
     pub fn name_or_id(&self) -> String {
+        let mut res = String::new();
+        if self.0 < 256 {
+            res.push_str("Core(");
+        } else if self.0 < 65536 {
+            res.push_str("Index(");
+        } else {
+            res.push_str("Attribute(");
+        };
         match self.name() {
             Some(s) => {
-                s.to_string()
+                res.push_str(&s);
+                res.push(')');
             },
             None => {
                 if self.0 < 256 {
-                    panic!("All Core Attributes should have names")
+                    panic!("All Core Attribute should have names")
                 } else if self.0 < 65536 {
-                    format!("Index({:#04X})", self.0)
+                    res.push_str(&format!("{:#06X}", self.0));
+                    res.push(')');
                 } else {
-                    format!("Custom({:#016X})", self.0)
+                    res.push_str(&format!("Attribute({:#018X})", self.0));
+                    res.push(')');
                 }
             }
         }
+        res
     }
 
 
-    /// Creates a string to an attribute primarly by hasinging it
-    /// will check if the str is a known attribute such as DELTA
-    /// will check if the str is Index(_) or Custom(_)
-    /// regestoring there names or reading there hex value accordingly
+    /// Creates an attribute from a str
+    /// if the string has the form "Index(0x1234)" or "Attribute(0x12345678)"
+    /// the attribute will be the corresponding attribute
+    /// if the string has the form "Index('name')" or "Attribute('name')"
+    /// the attribute name will be added to the list of known names
+    /// will check if the str is a known attribute such as DELTA, TIME_ON_FRAME, FRAMES
     pub fn from_str(from: &str) -> Attribute {
         let from = from.trim();
-        if from.starts_with("Index(0X") || from.starts_with("Custom(0X") {
-            let start = from.find("(").unwrap() + 2;
-            return Attribute(u64::from_str_radix(&from[start..from.len()-1], 16).expect("proper hex format"));
-        }
         if from.starts_with("Index(") {
-            return Attribute::new_index(from[6..from.len()-1].to_string());
+            if from.len() > 7 {
+            if let Some(c) = from.get(6..from.len() - 1) {
+                return if c.starts_with(|x: char| {x.is_digit(10)}) {
+                    Attribute::from_digit(c)
+                }
+                else {
+                    Attribute::new_index(c)
+                }
+            }
+            }
+            panic!("Invalid Index(...)")
         }
-        if from.starts_with("Custom(") {
-            return Attribute::new_attribute(from[7..from.len()-1].to_string());
+        if from.starts_with("Attribute(") {
+            if from.len() > 11 {
+            if let Some(c) = from.get(10..from.len() - 1) {
+                return if c.starts_with(|x: char| {x.is_digit(10)}) {
+                    Attribute::from_digit(&from[10..from.len() - 1])
+                }
+                else {
+                    Attribute::new_attribute(&from[10..from.len() - 1])
+                }
+            }
+            }
+            panic!("Invalid Attribute(...)")
+        }
+        if from.starts_with("Core(") {
+            return match &from[5..from.len() - 1] {
+                "Delta" => {Attribute::DELTA},
+                "FrameTime" => {Attribute::TIME_ON_FRAME},
+                "Frames" => {Attribute::FRAMES},
+                _ => panic!("Invalid Core(...)")
+            }
+        }
+        if from.starts_with(|c: char| {c.is_digit(10)}) {
+            return Attribute::from_digit(from);
         }
         match from {
             "Delta" => {Attribute::DELTA},
