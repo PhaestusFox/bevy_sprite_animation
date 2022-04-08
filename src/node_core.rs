@@ -54,6 +54,9 @@ impl NodeID {
             use std::hash::Hasher;
             let mut hasher = std::collections::hash_map::DefaultHasher::default();
             data.hash(&mut hasher);
+            while hasher.finish() < 65536 {
+                hasher.write_u8(0);
+            }
             NodeID(hasher.finish())
         };
         id
