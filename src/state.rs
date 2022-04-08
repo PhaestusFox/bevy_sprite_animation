@@ -54,7 +54,27 @@ impl AnimationState {
         }
     }
 
-    pub fn set_attribute<D: Serialize>(&mut self, key: Attributes, val: D) {
+    #[inline]
+    pub fn get_attribute_raw(&self, key: &Attribute) -> &Vec<u8> {
+        self.try_get_attribute_raw(key).expect(&format!("Attribute {} Exists", key))
+    }
+
+    #[inline]
+    pub fn try_get_attribute_raw(&self, key: &Attribute) -> Option<&Vec<u8>> {
+        self.data.get(key)
+    }
+
+    #[inline]
+    pub fn get_attribute_raw_mut(&mut self, key: &Attribute) -> &mut Vec<u8> {
+        self.try_get_attribute_raw_mut(key).expect(&format!("Attribute {} Exists", key))
+    }
+
+    #[inline]
+    pub fn try_get_attribute_raw_mut(&mut self, key: &Attribute) -> Option<&mut Vec<u8>> {
+        self.data.get_mut(key)
+    }
+
+    pub fn set_attribute<D: Serialize>(&mut self, key: Attribute, val: D) {
         match bincode::serialize(&val) {
             Ok(v) => {
                 //todo make return something
