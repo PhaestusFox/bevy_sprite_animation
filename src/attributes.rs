@@ -211,7 +211,21 @@ impl Attribute {
             "Delta" => {Attribute::DELTA},
             "FrameTime" => {Attribute::TIME_ON_FRAME},
             "Frames" => {Attribute::FRAMES},
-            _ => {Attribute(Attribute::hash_for_custom(&from))}
+            _ => {Attribute::new_attribute(from)}
         }
+    }
+
+    fn from_digit(data: &str) -> Attribute {
+        let data = data.trim();
+        if data.starts_with("0x") || data.starts_with("0X") {
+            return Attribute(u64::from_str_radix(&data[2..], 16).expect("proper hex format"));
+        }
+        if data.starts_with("0b") || data.starts_with("0B") {
+            return Attribute(u64::from_str_radix(&data[2..], 2).expect("proper binary format"));
+        }
+        if data.starts_with("0o") || data.starts_with("0O") {
+            return Attribute(u64::from_str_radix(&data[2..], 8).expect("proper octal format"));
+        }
+        Attribute(u64::from_str_radix(data, 10).expect("proper decimal format"))
     }
 }
