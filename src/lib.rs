@@ -17,21 +17,21 @@ pub mod state;
 #[cfg(test)]
 mod test{
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
-        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets"), bevy::tasks::TaskPool::new())
+        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", false), bevy::tasks::TaskPool::new())
     }
 }
 
-pub struct AnimationPlugin<Flag>{
+pub struct SpriteAnimationPlugin<Flag>{
     marker: PhantomData<Flag>
 }
 
-impl<F: 'static + Send + Sync> Default for AnimationPlugin<F> {
-    fn default() -> AnimationPlugin<F>{
-        AnimationPlugin { marker: PhantomData::default() }
+impl<F: 'static + Send + Sync> Default for SpriteAnimationPlugin<F> {
+    fn default() -> SpriteAnimationPlugin<F>{
+        SpriteAnimationPlugin { marker: PhantomData::default() }
     }
 }
 
-impl<F:'static + Send + Sync + Component> Plugin for AnimationPlugin<F> {
+impl<F:'static + Send + Sync + Component> Plugin for SpriteAnimationPlugin<F> {
     fn build(&self, app: &mut App) {
         app.insert_resource(AnimationNodeTree::<F>::default());
         app.add_system(animation_system::<F>.label("AnimationUpdate"));
@@ -39,11 +39,31 @@ impl<F:'static + Send + Sync + Component> Plugin for AnimationPlugin<F> {
         app.add_system_to_stage(CoreStage::First, state::clear_changed);
         app.add_system_to_stage(CoreStage::PostUpdate, state::flip_update);
         app.add_system_to_stage(CoreStage::Last, state::clear_unchanged_temp);
+        #[cfg(feature = "bevy-inspector-egui")]
+        bevy_inspector_egui::RegisterInspectable::register_inspectable::<StartNode>(app);
     }
 }
 
 #[derive(Component)]
 pub struct StartNode(node_core::NodeID);
+
+#[cfg(feature = "bevy-inspector-egui")]
+impl bevy_inspector_egui::Inspectable for StartNode {
+    type Attributes = ();
+
+    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
+        let mut edit = false;
+        ui.horizontal(|ui|{
+            let mut name = self.0.name_or_id();
+            ui.label("Start Node: ");
+            if ui.text_edit_singleline(&mut name).changed() {
+                self.0 = NodeID::from_str(&name);
+                edit = true;
+            }
+        });
+        edit
+    }
+}
 
 impl StartNode {
     pub fn from_str(name: &str) -> StartNode {
@@ -51,12 +71,6 @@ impl StartNode {
     }
     pub fn from_u64(id: u64) -> StartNode {
         StartNode(NodeID::from_u64(id))
-    }
-    pub fn from_hex(hex: &str) -> Result<StartNode, std::num::ParseIntError> {
-        let hex = if hex.to_lowercase().starts_with("0x") {
-            u64::from_str_radix(&hex[2..], 16)?
-        } else {u64::from_str_radix(hex, 16)?};
-        Ok(StartNode(NodeID::from_u64(hex)))
     }
 }
 
@@ -85,19 +99,6 @@ fn default_loaders() -> HashMap<String, Box<dyn NodeLoader>> {
     map.insert("FPSNode".to_string(), FPSNode::loader());
     map.insert("ScriptNode".to_string(), ScriptNode::loader());
     map
-}
-
-impl<F> bevy_inspector_egui::Inspectable for AnimationNodeTree<F> {
-    type Attributes = ();
-
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _: Self::Attributes, context: &mut bevy_inspector_egui::Context) -> bool {
-        for (name, node) in self.nodes.iter_mut() {
-        ui.vertical(|ui| {
-            ui.label(name.to_string());
-            node.ui(ui, context);
-        });}
-        true
-    }
 }
 
 impl<F> AnimationNodeTree<F> {

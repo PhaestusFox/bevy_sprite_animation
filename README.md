@@ -89,7 +89,9 @@ fn add_animator(
     //add the state
     .insert(state)
     //add the flag for the AnimationNodes<T> to use
-    .insert(MainAnimation);
+    .insert(MainAnimation)
+    //add a start node can be the nodes name or the id
+    .insert(StartNode::from_str("0x1"));
 }
 ```
 Change the state of the `AnimationState` to controle what frame is picked next update

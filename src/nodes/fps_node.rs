@@ -5,13 +5,29 @@ use crate::error::BevySpriteAnimationError as Error;
 use crate::node_core::CanLoad;
 use crate::prelude::*;
 
-#[derive(bevy_inspector_egui::Inspectable, serde::Serialize, serde::Deserialize, Reflect)]
+#[derive(serde::Serialize, serde::Deserialize, Reflect)]
 #[reflect(Serialize, Deserialize)]
 pub struct FPSNode {
     name: String,
     fps: u32,
     frame_time: f32,
     then: NodeID,
+}
+
+#[cfg(feature = "bevy-inspector-egui")]
+impl bevy_inspector_egui::Inspectable for FPSNode {
+    type Attributes = ();
+
+    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
+        let mut edit = false;
+        ui.collapsing("FPSNode", |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Name: ");
+                if ui.text_edit_singleline(&mut self.name).changed() {edit = true;};
+            });
+        });
+        edit
+    }
 }
 
 impl std::hash::Hash for FPSNode {

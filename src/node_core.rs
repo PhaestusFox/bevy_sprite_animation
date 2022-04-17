@@ -33,13 +33,12 @@ pub struct NodeID(
 use std::collections::HashMap;
 lazy_static::lazy_static! {
     static ref NODE_ID_NAMES: std::sync::Mutex<HashMap<NodeID, String>> = {
-        let mut map = HashMap::new();
+        let map = HashMap::new();
         std::sync::Mutex::new(map)
     };
 }
 
 impl NodeID {
-
     pub fn as_u64(self) -> u64 {
         self.0
     }

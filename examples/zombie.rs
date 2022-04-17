@@ -155,7 +155,7 @@ fn main() {
     App::new()
     .add_plugins(DefaultPlugins)
     .add_plugin(animation::AnimationPlugin)
-    .add_plugin(AnimationPlugin::<Zombie>::default())
+    .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
     .add_startup_system(setup_animations)
     .add_plugin(player::Player)
     .run()
@@ -206,5 +206,5 @@ fn setup_animations(
     .insert(ZState::Attacking)
     .insert(start)
     .insert(player::Player)
-    .insert(StartNode::from_hex("0x0").unwrap());
+    .insert(StartNode::from_str("0x0"));
 }

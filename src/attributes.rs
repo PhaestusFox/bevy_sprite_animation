@@ -42,9 +42,29 @@ mod test{
     }
 }
 
-#[derive(Default, Hash, PartialEq, Eq, bevy_inspector_egui::Inspectable, Clone, Copy, Reflect, PartialOrd, Ord)]
+#[derive(Default, Hash, PartialEq, Eq, Clone, Copy, Reflect, PartialOrd, Ord)]
 #[reflect_value(Serialize, Deserialize)]
 pub struct Attribute(u64);
+
+#[cfg(feature = "bevy-inspector-egui")]
+impl bevy_inspector_egui::Inspectable for Attribute {
+    type Attributes = ();
+
+    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
+        let mut edit = false;
+        let mut name = self.name_or_id();
+        if ui.text_edit_singleline(&mut name).changed() {
+            if name.starts_with("Index(") || name.starts_with("Attribute(") {
+                if name.ends_with(")") {
+                    name.push(')');
+                }
+            }
+            *self = Attribute::from_str(&name);
+            edit = true;
+        }
+        edit
+    }
+}
 
 impl Attribute {
     pub const NULL: Attribute = Attribute(0);
