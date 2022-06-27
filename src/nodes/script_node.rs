@@ -1,5 +1,5 @@
 use bevy::prelude::AssetServer;
-
+use bevy::log::error;
 use crate::{prelude::{NodeID, Attribute, AnimationNode, NodeResult, BevySpriteAnimationError}, state::AnimationState};
 
 #[cfg(test)]
@@ -42,10 +42,29 @@ impl AnimationNode for ScriptNode {
                         Token::Attribute(i) => i,
                         _ => {panic!("unimplemented `set {:?}`", self.tokens[index + 1])}
                     };
-                    if let Token::Raw(v) = &self.tokens[index + 2] {
-                        let data = state.get_attribute_raw_mut(&key);
-                        *data = v.clone();
-                    } else {panic!("unimplemented `set {:?} = {:?}`", key, self.tokens[index + 2])};
+                    match &self.tokens[index + 2] {
+                        Token::Raw(v) => {
+                            let data = state.get_attribute_raw_mut(&key);
+                            *data = v.clone();},
+                        Token::Ron(data) => {
+                            #[cfg(feature = "ron")]
+                            {
+                                state.set_attribute_from_ron(key, data).unwrap();
+                            }
+                            #[cfg(not(feature = "ron"))]
+                            {
+                                return Err(NodeResult::Error(format!("tried to set {:?} = Ron({}) without ron feature", key, data)));
+                            }
+                        },
+                        Token::Int(val) => {
+                            if key.is_index() {
+                                state.set_attribute(key, *val);
+                            } else {
+                                panic!("unimplemented only Index(_) can be set to int")
+                            }
+                        }
+                        _ => panic!("unimplemented `set {:?} = {:?}`", key, self.tokens[index + 2]),
+                    }
                     index += 3;
                 },
                 Token::Return(id) => {
@@ -171,6 +190,7 @@ enum Token {
     If,
     Else,
     Return(NodeID),
+    Ron(String),
     Unknown(String),
 }
 
@@ -202,6 +222,7 @@ impl ToString for Token {
             Token::Set => "set".to_string(),
             Token::Attribute(att) => format!("{}", att),
             Token::Index(att) => format!("{}", att),
+            Token::Ron(data) => format!("Ron({})", data),
             _ => panic!("unimplemented `to_string` for {:?}", self)
         }
     }
@@ -358,6 +379,23 @@ impl ScriptNode {
                     hex.push(u8::from_str_radix(&format!("{}{}", digit, digit_two), 16).expect("proper hex format"));
                 }
                 tokens.push(Token::Raw(hex));
+                continue;
+            }
+            if word.starts_with("Ron(") {
+                let mut ron = String::from(&word[4..]);
+                while ron.matches('(').collect::<Vec<&str>>().len() != ron.matches(')').collect::<Vec<&str>>().len() - 1 {
+                    ron.push_str(words.next().expect("there to be another word"));
+                }
+                if !ron.ends_with(')') {
+                    error!("ron(_) should not have trailing chars");
+                    continue;
+                }
+                #[cfg(not(feature = "ron"))]
+                {
+                    warn!("using ron(_) without ron feature enabled\n");
+                }
+                ron.pop();
+                tokens.push(Token::Ron(ron));
                 continue;
             }
             let token = match word {

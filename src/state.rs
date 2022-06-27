@@ -7,11 +7,23 @@ use bevy::prelude::*;
 
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Component)]
+#[derive(Component)]
 pub struct AnimationState {
     data: HashMap<Attribute,Vec<u8>>,
     pub(crate) changed: HashSet<Attribute>,
     pub(crate) temp: HashSet<Attribute>,
+    #[cfg(feature = "ron")]
+    data_type: HashMap<Attribute, Box<fn(&mut Self, key: Attribute, val: &str) -> Result<(), Error>>>
+}
+
+impl std::fmt::Debug for AnimationState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AnimationState")
+        .field("data", &self.data)
+        .field("changed", &self.changed)
+        .field("temp", &self.temp)
+        .finish()
+    }
 }
 
 impl Default for AnimationState {
@@ -21,7 +33,11 @@ impl Default for AnimationState {
         data.insert(Attribute::FRAMES, bincode::serialize(&0usize).unwrap());
         data.insert(Attribute::FLIP_X, bincode::serialize(&false).unwrap());
         data.insert(Attribute::FLIP_Y, bincode::serialize(&false).unwrap());
-        Self { data, changed: HashSet::new(), temp: HashSet::new() }
+        #[cfg(not(feature = "ron"))]
+        let s = Self { data, changed: HashSet::new(), temp: HashSet::new()};
+        #[cfg(feature = "ron")]
+        let s = Self { data, changed: HashSet::new(), temp: HashSet::new(), data_type: HashMap::new()};
+        s
     }
 }
 
@@ -74,6 +90,28 @@ impl AnimationState {
         self.data.get_mut(key)
     }
 
+    #[cfg(feature = "ron")]
+    pub fn set_attribute<D: Serialize + DeserializeOwned>(&mut self, key: Attribute, val: D) {
+        match bincode::serialize(&val) {
+            Ok(v) => {
+                //todo make return something
+                self.change(key);
+                self.data.insert(key, v);
+                self.data_type.insert(key, Box::new(Self::insert_test::<D>));
+            },
+            Err(e) => {error!("Failed to serialize {:?}:{}",key, e);}
+        }
+    }
+
+    #[cfg(feature = "ron")]
+    fn insert_test<D: Serialize + DeserializeOwned>(&mut self, key: Attribute, val: &str) -> Result<(), Error> {
+        match ron::from_str::<D>(val) {
+            Ok(v) => {self.set_attribute(key, v); Ok(())},
+            Err(e) => Err(Error::RonError(e)),
+        }
+    }
+
+    #[cfg(not(feature = "ron"))]
     pub fn set_attribute<D: Serialize>(&mut self, key: Attribute, val: D) {
         match bincode::serialize(&val) {
             Ok(v) => {
@@ -85,6 +123,17 @@ impl AnimationState {
         }
     }
     
+    #[cfg(feature = "ron")]
+    #[inline(always)]
+    pub fn set_attribute_from_ron(&mut self, key: Attribute, val: &str) -> Result<(), Error> {
+        let id = if let Some(id) = self.data_type.get(&key) {
+            id.clone()
+        } else {
+            return Err(Error::NoTypeId(key));
+        };
+        id(self, key, val)
+    }
+
     pub fn set_persistent(&mut self, temp: &Attribute) -> bool {
         self.temp.remove(temp)
     }
