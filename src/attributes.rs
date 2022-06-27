@@ -74,6 +74,17 @@ impl Attribute {
     pub const FLIP_X: Attribute = Attribute(4);
     pub const FLIP_Y: Attribute = Attribute(5);
     pub const INDEX: Attribute = Attribute(256);
+
+    #[inline(always)]
+    pub fn is_index(&self) -> bool {
+        if self.0 < 256 {
+            false
+        } else if self.0 < 0x10000 {
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl std::fmt::Display for Attribute {
