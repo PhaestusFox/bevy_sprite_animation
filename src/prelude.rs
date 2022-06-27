@@ -9,3 +9,4 @@ pub use super::StartNode;
 pub use super::nodes::*;
 pub use super::error::BevySpriteAnimationError;
 pub use super::node_core::NodeLoader;
+pub use super::system_lable::AnimationLabel;

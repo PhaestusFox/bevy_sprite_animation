@@ -13,7 +13,7 @@ pub mod attributes;
 pub mod node_core;
 pub mod nodes;
 pub mod state;
-
+pub mod system_lable;
 #[cfg(test)]
 mod test{
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {

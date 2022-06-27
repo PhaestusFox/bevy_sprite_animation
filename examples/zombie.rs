@@ -12,9 +12,9 @@ pub struct AnimationPlugin;
 
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(zombie_state_update.before("AnimationUpdate"));
-        app.add_system(zombie_update_state.after("AnimationUpdate"));
-        app.add_system(zombie_type_update.before("AnimationUpdate"));
+        app.add_system(zombie_state_update.before(AnimationLabel::Update));
+        app.add_system(zombie_update_state.after(AnimationLabel::Update));
+        app.add_system(zombie_type_update.before(AnimationLabel::Update));
     }
 }
 
