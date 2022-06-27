@@ -1,20 +1,20 @@
 [
 ScriptNode( #id NodeID(0x001E527169B5475656)
-#fallback NodeID(0x00FADC5C6B7FF01B5F)
-if Index(Stand) >= 6 set Attribute(ZombieState) [00000000] return NodeID(0x00519844F358272E11) ),
-	ScriptNode( #id NodeID(0x0025AC21264ABCB025)
-#fallback NodeID(0x00FADC5C6B7FF01B5F)
-if Index(Stand) >= 6 set Attribute(ZombieState) [00000000] return NodeID(0x00CB505F244CC96683) ),
-	ScriptNode( #id NodeID(0x008EA5288868FD8F3A)
-#fallback NodeID(0x00FADC5C6B7FF01B5F)
-if Index(Attack) >= 10 set Attribute(ZombieState) [00000000] return NodeID(0x003F5CC3C082956460) ),
-	ScriptNode( #id NodeID(0x006EE62A603E81AD8B)
-#fallback NodeID(0x00FADC5C6B7FF01B5F)
-if Index(Fall) >= 5 set Attribute(ZombieState) [08000000] return NodeID(0x00D4FFC8686B9FE74F) ),
-	ScriptNode( #id NodeID(0x009F4BD19B423E940A)
-#fallback NodeID(0x00FADC5C6B7FF01B5F)
-if Index(Fall) >= 6 set Attribute(ZombieState) [09000000] return NodeID(0x0035FC421AADA3D9B8) ),
-	NodeID("0x0000000000000001"):MatchNode<zombie::animation::ZState>(
+	#fallback NodeID(0x00FADC5C6B7FF01B5F)
+	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeID(0x00519844F358272E11) ),
+ScriptNode( #id NodeID(0x0025AC21264ABCB025)
+	#fallback NodeID(0x00FADC5C6B7FF01B5F)
+	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeID(0x00CB505F244CC96683) ),
+ScriptNode( #id NodeID(0x008EA5288868FD8F3A)
+	#fallback NodeID(0x00FADC5C6B7FF01B5F)
+	if Index(Attack) >= 10 set Attribute(ZombieState) Ron(Idle) return NodeID(0x003F5CC3C082956460) ),
+ScriptNode( #id NodeID(0x006EE62A603E81AD8B)
+	#fallback NodeID(0x00FADC5C6B7FF01B5F)
+	if Index(Fall) >= 5 set Attribute(ZombieState) Ron(LayingF) return NodeID(0x00D4FFC8686B9FE74F) ),
+ScriptNode( #id NodeID(0x009F4BD19B423E940A)
+	#fallback NodeID(0x00FADC5C6B7FF01B5F)
+	if Index(Fall) >= 6 set Attribute(ZombieState) Ron(LayingB) return NodeID(0x0035FC421AADA3D9B8) ),
+NodeID("0x0000000000000001"):MatchNode<zombie::animation::ZState>(
 	name: "Zombie1_SwitchNode",
 	check: AttributeName("ZombieState"),
 	default: ("0xFADC5C6B7FF01B5F"),
@@ -30,8 +30,8 @@ if Index(Fall) >= 6 set Attribute(ZombieState) [09000000] return NodeID(0x0035FC
 	(Attacking, ("0x8EA5288868FD8F3A")),
 	(Running, ("0x523587637DC7A79D")),
 	(Test, ("0x000000000000000C")),
-	],
-),IndexNode(
+	],),
+IndexNode(
 	name: "Zombie1_Idle",
 	frames: [
 	Zombie1/zombie1_00000.png,

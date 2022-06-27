@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_sprite_animation::prelude::*;
+use bevy_inspector_egui;
 
 use animation::ZState;
 
@@ -47,7 +48,7 @@ fn zombie_state_update(
 ) {
     let att = Attribute::from_str("ZombieState");
     for (mut state, name) in zombies.iter_mut() {
-        state.set_attribute(att, name);
+        state.set_attribute(att, *name);
     }
 }
 
@@ -154,6 +155,7 @@ mod player {
 fn main() {
     App::new()
     .add_plugins(DefaultPlugins)
+    .add_plugin(bevy_inspector_egui::prelude::WorldInspectorPlugin::default())
     .add_plugin(animation::AnimationPlugin)
     .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
     .add_startup_system(setup_animations)
