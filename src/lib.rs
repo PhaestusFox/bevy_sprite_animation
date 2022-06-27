@@ -34,10 +34,10 @@ impl<F: 'static + Send + Sync> Default for SpriteAnimationPlugin<F> {
 impl<F:'static + Send + Sync + Component> Plugin for SpriteAnimationPlugin<F> {
     fn build(&self, app: &mut App) {
         app.insert_resource(AnimationNodeTree::<F>::default());
-        app.add_system(animation_system::<F>.label("AnimationUpdate"));
-        app.add_system(state::update_delta::<F>.before("AnimationUpdate"));
+        app.add_system(animation_system::<F>.label(AnimationLabel::Update));
+        app.add_system(state::update_delta::<F>.before(AnimationLabel::Update).label(AnimationLabel::PreUpdate));
         app.add_system_to_stage(CoreStage::First, state::clear_changed);
-        app.add_system_to_stage(CoreStage::PostUpdate, state::flip_update);
+        app.add_system_to_stage(CoreStage::PostUpdate, state::flip_update.label(AnimationLabel::PostUpdate));
         app.add_system_to_stage(CoreStage::Last, state::clear_unchanged_temp);
         #[cfg(feature = "bevy-inspector-egui")]
         bevy_inspector_egui::RegisterInspectable::register_inspectable::<StartNode>(app);
