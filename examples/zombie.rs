@@ -1,76 +1,69 @@
 use bevy::prelude::*;
 use bevy_sprite_animation::prelude::*;
-use bevy_inspector_egui;
 
 use animation::ZState;
 
 mod animation {
-use bevy_sprite_animation::prelude::*;
+    use bevy_sprite_animation::prelude::*;
 
-use bevy::prelude::*;
+    use bevy::prelude::*;
 
-pub struct AnimationPlugin;
+    ///this is a representaion of how you get data in and out of animation states
+    pub struct YourAnimationPlugin;
 
-impl Plugin for AnimationPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_system(zombie_state_update.before(AnimationLabel::Update));
-        app.add_system(zombie_update_state.after(AnimationLabel::Update));
-        app.add_system(zombie_type_update.before(AnimationLabel::Update));
-    }
-}
-
-#[derive(Debug, Component, Hash, PartialEq, Eq, Clone, Copy, Reflect,
-bevy_inspector_egui::Inspectable, serde::Serialize, serde::Deserialize,
-PartialOrd, Ord)]
-#[reflect_value()]
-pub enum ZState {
-    Idle,
-    Walking,
-    Running,
-    Attacking,
-    FallF,
-    StandF,
-    FallB,
-    StandB,
-    LayingF,
-    LayingB,
-    Test,
-}
-
-impl Default for ZState {
-    fn default() -> Self {
-        ZState::Idle
-    }
-}
-
-fn zombie_state_update(
-    mut zombies: Query<(&mut AnimationState, &ZState), With<super::Zombie>>
-) {
-    let att = Attribute::from_str("ZombieState");
-    for (mut state, name) in zombies.iter_mut() {
-        state.set_attribute(att, *name);
-    }
-}
-
-fn zombie_update_state(
-    mut zombies: Query<(&AnimationState, &mut ZState), With<super::Zombie>>
-) {
-    let attribute = Attribute::from_str("ZombieState");
-    for (state,mut name) in zombies.iter_mut() {
-        if state.changed(&attribute) {
-            *name = state.get_attribute::<ZState>(&attribute);
+    impl Plugin for YourAnimationPlugin {
+        fn build(&self, app: &mut App) {
+            app.add_system(zombie_state_update.before(AnimationLabel::Update));
+            app.add_system(zombie_update_state.after(AnimationLabel::Update));
         }
     }
-}
 
-fn zombie_type_update(
-    mut zombies: Query<(&mut AnimationState, &super::Zombie)>
-){
-    let att = Attribute::new_attribute("ZombieType");
-    for (mut state, zombie) in zombies.iter_mut() {
-        state.set_attribute(att, zombie.0);
+
+    ///ZState in the state the zombie is currently in
+    #[derive(Debug, Component, Hash, PartialEq, Eq, Clone, Copy, Reflect,
+        serde::Serialize, serde::Deserialize, PartialOrd, Ord)]
+    #[reflect_value()]
+    pub enum ZState {
+        Idle,
+        Walking,
+        Running,
+        Attacking,
+        FallF,
+        StandF,
+        FallB,
+        StandB,
+        LayingF,
+        LayingB,
+        Test,
     }
-}
+
+    impl Default for ZState {
+        fn default() -> Self {
+            ZState::Idle
+        }
+    }
+
+    ///updates the zombies animation state to reflect its progam state
+    fn zombie_state_update(
+        mut zombies: Query<(&mut AnimationState, &ZState), (With<super::Zombie>, Changed<ZState>)>
+    ) {
+        let att = Attribute::from_str("ZombieState");
+        for (mut state, name) in zombies.iter_mut() {
+            state.set_attribute(att, *name);
+        }
+    }
+
+    ///update the zombies program state is it was changed by the animation
+    fn zombie_update_state(
+        mut zombies: Query<(&AnimationState, &mut ZState), With<super::Zombie>>
+    ) {
+        let attribute = Attribute::from_str("ZombieState");
+        for (state,mut name) in zombies.iter_mut() {
+            if state.changed(&attribute) {
+                *name = state.get_attribute::<ZState>(&attribute);
+            }
+        }
+    }
 
 }
 
@@ -122,7 +115,7 @@ mod player {
                         ZState::StandF => {ZState::StandF},
                         ZState::FallB => {ZState::FallB},
                         ZState::StandB => {ZState::StandB},
-                        ZState::Test => todo!(),
+                        ZState::Test => {ZState::Test},
                         ZState::LayingB => {ZState::StandB},
                         ZState::LayingF => {ZState::StandF},
                     }
@@ -134,10 +127,12 @@ mod player {
                         ZState::Running => {ZState::Walking},
                         ZState::Attacking => {ZState::Attacking},
                         ZState::FallF => {ZState::FallF},
-                        ZState::StandF => {let index = animation.get_attribute::<usize>(&local[1]); animation.set_attribute(local[2], index); ZState::FallF},
+                        ZState::StandF => {let index = animation.get_attribute::<usize>(&local[1]);
+                            animation.set_attribute(local[2], 6 - index); ZState::FallF},
                         ZState::FallB => {ZState::FallB},
-                        ZState::StandB => {let index = animation.get_attribute::<usize>(&local[1]); animation.set_attribute(local[2], index); ZState::FallB},
-                        ZState::Test => todo!(),
+                        ZState::StandB => {let index = animation.get_attribute::<usize>(&local[1]);
+                            animation.set_attribute(local[2], 7 - index); ZState::FallB},
+                        ZState::Test => {ZState::Test},
                         ZState::LayingB => {ZState::LayingB},
                         ZState::LayingF => {ZState::LayingF},
                     }
@@ -145,6 +140,9 @@ mod player {
                 KeyCode::Space => {
                     *zstate = ZState::Attacking;
                 },
+                KeyCode::T => {
+                    *zstate = ZState::Test;
+                }
                 _ => {}
             }
         }
@@ -155,20 +153,16 @@ mod player {
 fn main() {
     App::new()
     .add_plugins(DefaultPlugins)
-    .add_plugin(bevy_inspector_egui::prelude::WorldInspectorPlugin::default())
-    .add_plugin(animation::AnimationPlugin)
+    .add_plugin(animation::YourAnimationPlugin)
     .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
     .add_startup_system(setup_animations)
     .add_plugin(player::Player)
     .run()
 }
 
-use bevy_inspector_egui::Inspectable;
-#[derive(Component, Default, Inspectable, Reflect)]
+#[derive(Component, Default, Reflect)]
 #[reflect(Component)]
-struct Zombie(
-    #[inspectable(min = 1, max = 8)]
-    usize);
+struct Zombie;
 
 fn setup_animations(
     mut commands: Commands,
@@ -180,7 +174,13 @@ fn setup_animations(
     let nodes = nodes.as_mut();
     nodes.registor_node::<MatchNode::<ZState>>();
 
-    println!("\n\n{}\n\n", std::any::type_name::<MatchNode::<ZState>>());
+    let mut images = Vec::new();
+    for i in 0..=67 {
+        images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
+    }
+    nodes.insert_node(NodeID::from_u64(0x3), Box::new(
+        bevy_sprite_animation::nodes::IndexNode::new("test", &images, true)
+    ));
 
     let fall_index = Attribute::new_index("Fall");
     let stand_index = Attribute::new_index("Stand");
@@ -190,10 +190,8 @@ fn setup_animations(
         error!("{}", e)
     }
 
-    for i in 1..=1{
-        if let Err(e) = nodes.load(&format!("./Zombie{}.nodetree",i), &asset_server) {
-            error!("{}", e)
-        }   
+    if let Err(e) = nodes.load("./Zombie1.nodetree", &asset_server) {
+        error!("{}", e)
     }
 
     let mut start = AnimationState::default();
@@ -202,9 +200,10 @@ fn setup_animations(
     start.set_temporary(attack_index);
     commands.spawn_bundle(SpriteBundle{
         transform: Transform::from_translation(Vec3::X * 10.),
+        sprite: Sprite{custom_size: Some(Vec2::splat(1000.)), ..Default::default()},
         ..Default::default()
     })
-    .insert(Zombie(1))
+    .insert(Zombie)
     .insert(ZState::Attacking)
     .insert(start)
     .insert(player::Player)

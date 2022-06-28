@@ -182,6 +182,7 @@ impl<F> AnimationNodeTree<F> {
         Ok(())
     }
 
+    #[cfg(feature = "serialize")]
     pub fn load_node_from_str(&mut self, data: &str, asset_server: &AssetServer) -> Result<NodeID, Error> {
         let (id, node) = self.load_node(data, asset_server)?;
         self.insert_node(id, node);

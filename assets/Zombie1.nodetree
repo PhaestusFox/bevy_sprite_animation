@@ -29,7 +29,7 @@ NodeID("0x0000000000000001"):MatchNode<zombie::animation::ZState>(
 	(Walking, ("0x1700B9C67B93A42F")),
 	(Attacking, ("0x8EA5288868FD8F3A")),
 	(Running, ("0x523587637DC7A79D")),
-	(Test, ("0x000000000000000C")),
+	(Test, ("0x3")),
 	],),
 IndexNode(
 	name: "Zombie1_Idle",

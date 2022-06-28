@@ -76,14 +76,16 @@ impl Attribute {
     pub const INDEX: Attribute = Attribute(256);
 
     #[inline(always)]
+    pub fn is_core(&self) -> bool {
+        self.0 < 256
+    }
+    #[inline(always)]
     pub fn is_index(&self) -> bool {
-        if self.0 < 256 {
-            false
-        } else if self.0 < 0x10000 {
-            true
-        } else {
-            false
-        }
+        255 < self.0 && self.0 < 0x10000
+    }
+    #[inline(always)]
+    pub fn is_custom(&self) -> bool {
+        self.0 > 0xFFFF
     }
 }
 
@@ -110,7 +112,7 @@ impl serde::Serialize for Attribute {
 
 impl Into<AttributeSerde> for &Attribute {
     fn into(self) -> AttributeSerde {
-        if self.0 < 256 {
+        if self.is_core() {
             match self.0 {
             1 => AttributeSerde::Delta,
             2 => AttributeSerde::Frames,
@@ -119,7 +121,7 @@ impl Into<AttributeSerde> for &Attribute {
             5 => AttributeSerde::FlipY,
             _ => panic!("Reserved for futer use")
             }
-        } else if self.0 < 65536 {
+        } else if self.is_index() {
             match self.name() {
                 Some(n) => {AttributeSerde::IndexName(n)},
                 None => {AttributeSerde::IndexID(self.0 as u16)},
@@ -191,8 +193,8 @@ impl Attribute {
     /// use from_str to get the attribute from a string
     #[inline(always)]
     pub fn new_index(name: &str) -> Attribute{
-        let mut map = CUSTOMATTRIBUTES.lock().unwrap();
         let att = Attribute(Attribute::hash_for_index(name));
+        let mut map = CUSTOMATTRIBUTES.lock().unwrap();
         if !map.contains_key(&att) {
             map.insert(att, name.to_string());
         }
@@ -279,7 +281,6 @@ impl Attribute {
         }
         res
     }
-
 
     /// Creates an attribute from a str
     /// if the string has the form "Index(0x1234)" or "Attribute(0x12345678)"

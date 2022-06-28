@@ -1,6 +1,6 @@
 NodeID("0x0000000000000000"):FPSNode(
-	    name: "ZombieFPS",
-	    fps: 7,
-	    frame_time: 0.14285715,
-	    then: NodeID("0x1"),
+	name: "ZombieFPS",
+	fps: 7,
+	frame_time: 0.14285715,
+	then: NodeID("0x1"),
 )

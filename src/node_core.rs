@@ -26,9 +26,7 @@ pub trait CanLoad {
 }
 
 #[derive(Debug, Default ,Hash, PartialEq, Eq, Clone, Copy, Reflect)]
-pub struct NodeID(
-    u64
-);
+pub struct NodeID(u64);
 
 use std::collections::HashMap;
 lazy_static::lazy_static! {
