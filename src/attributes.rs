@@ -17,17 +17,17 @@ mod test{
 
     #[test]
     fn statics_work() {
-        assert_eq!(Attribute::DELTA, Attribute::new_attribute("Delta"));
         assert_eq!(Attribute::DELTA, Attribute::from_str("Delta"));
         assert_eq!(Attribute::DELTA, Attribute::from_str("Core(Delta)"));
-        assert_ne!(Attribute::DELTA, Attribute::new_attribute("Attribute(Delta)"));
-        assert_eq!(Attribute::FRAMES, Attribute::new_attribute("Frames"));
+        assert_ne!(Attribute::DELTA, Attribute::new_attribute("Delta"));
+        assert_ne!(Attribute::DELTA, Attribute::from_str("Attribute(Delta)"));
         assert_eq!(Attribute::FRAMES, Attribute::from_str("Frames"));
         assert_eq!(Attribute::FRAMES, Attribute::from_str("Core(Frames)"));
-        assert_ne!(Attribute::FRAMES, Attribute::new_attribute("Attribute(Frames)"));
-        assert_ne!(Attribute::TIME_ON_FRAME, Attribute::new_attribute("FrameTime"));
+        assert_ne!(Attribute::FRAMES, Attribute::new_attribute("Frames"));
+        assert_ne!(Attribute::FRAMES, Attribute::from_str("Attribute(Frames)"));
         assert_eq!(Attribute::TIME_ON_FRAME, Attribute::from_str("FrameTime"));
         assert_eq!(Attribute::TIME_ON_FRAME, Attribute::from_str("Core(FrameTime)"));
+        assert_ne!(Attribute::TIME_ON_FRAME, Attribute::new_attribute("FrameTime"));
         assert_ne!(Attribute::TIME_ON_FRAME, Attribute::from_str("Attribute(FrameTime)"));
     }
 

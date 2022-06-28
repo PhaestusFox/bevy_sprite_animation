@@ -12,8 +12,7 @@ mod test {
     fn serialize_deserialize() {
         use crate::node_core::CanLoad;
         let asset_server = test_asset_server();
-        let node = ScriptNode::new("#id NodeID(0x1) #fallback NodeID(Zombie{i}_Idle) if Index(Stand) >= 6 set Attribute(ZombieState) [00000000] return NodeID(Zombie{i}_StandF)");
-        //let mut nodetree = AnimationNodes<Test>::default();
+        let node = ScriptNode::new("#id NodeID(0x1) #fallback NodeID(Zombie{i}_Idle) if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeID(Zombie1_StandF)");
 
         
         let mut data = String::new();
@@ -497,8 +496,13 @@ mod serialize {
         fn load(&mut self, data: &str, _: &AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
             let data = data.trim();
             let data = if data.starts_with("ScriptNode(") {
-                if !data.ends_with(')') {return Err(Error::MalformedStr { message: format!("Found ScriptNode( but failed to find Closing ')'"), location: crate::here!() })};
-                &data[data.find("ScriptNode(").unwrap() + 11..data.len() - 1]
+                if data.ends_with("),") {
+                    &data[data.find("ScriptNode(").unwrap() + 11..data.len() - 2]
+                } else if data.ends_with(')') {
+                    &data[data.find("ScriptNode(").unwrap() + 11..data.len() - 1]
+                } else {
+                    return Err(Error::MalformedStr { message: format!("Found ScriptNode( but failed to find Closing ')'"), location: crate::here!() })
+                }
             } else {
                 &data
             };
