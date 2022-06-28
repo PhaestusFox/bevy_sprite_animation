@@ -96,6 +96,7 @@ impl AnimationNode for ScriptNode {
         "unnamed stript; add #name to the first line to add a name"
     }
 
+    #[cfg(feature = "bevy-inspector-egui")]
     fn ui(&mut self, _ui: &mut bevy_inspector_egui::egui::Ui, _context: &mut bevy_inspector_egui::Context) -> bool {
         false
     }
