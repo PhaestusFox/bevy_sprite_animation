@@ -6,6 +6,8 @@ anyone is welcome to make suggestion and corrections to this repositry: esspecia
 
 this is more or less a copy of **[Aarthificial's Reanimator](https://github.com/aarthificial/reanimation)** for unity but for bevy of course.
 
+**[Here](https://youtu.be/6fuo8jm7wlM)** is a video explaing how the example works 
+
 <br>
 
 *subject to change with feedback*
