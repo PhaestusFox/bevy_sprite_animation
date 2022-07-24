@@ -89,7 +89,7 @@ impl AnimationNode for ScriptNode {
     fn name(&self) -> &str {
         for tag in self.tags.iter() {
             if let Tag::Name(name) = tag {
-                return name;
+                return &name;
             }
         }
         "unnamed stript; add #name to the first line to add a name"
@@ -128,7 +128,7 @@ impl AnimationNode for ScriptNode {
             }
         }
         if let Some(name) = has_name {
-            NodeID::from_name(name)
+            NodeID::from_name(&name)
         } else {
             use std::hash::Hash;
             use std::hash::Hasher;

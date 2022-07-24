@@ -72,6 +72,9 @@ impl StartNode {
     pub fn from_u64(id: u64) -> StartNode {
         StartNode(NodeID::from_u64(id))
     }
+    pub fn from_nodeid(id: NodeID) -> StartNode {
+        StartNode(id)
+    }
 }
 
 pub struct AnimationNodeTree<F> {
