@@ -10,7 +10,6 @@ use crate::prelude::*;
 pub struct FPSNode {
     name: String,
     fps: u32,
-    frame_time: f32,
     then: NodeID,
 }
 
@@ -42,12 +41,14 @@ impl FPSNode {
     pub fn new(name: &str, fps: u32, next: impl Into<NodeID>) -> FPSNode{
         FPSNode{
             name: name.to_string(),
-            frame_time: 1./ fps as f32,
             fps,
             then: next.into(),
         }
     }
 
+    fn frame_time(&self) -> f32 {
+        1. / self.fps as f32
+    }
 }
 
 #[cfg(feature = "serialize")]
@@ -65,8 +66,8 @@ impl AnimationNode for FPSNode {
         let delta = state.get_attribute::<f32>(&Attribute::DELTA);
         let rem_time = state.try_get_attribute_or_error::<f32>(&Attribute::TIME_ON_FRAME).unwrap_or(0.);
         let time = delta + rem_time;
-        let frames = (time / self.frame_time).floor();
-        let rem_time = time - self.frame_time * frames;
+        let frames = (time / self.frame_time()).floor();
+        let rem_time = time - self.frame_time() * frames;
         state.set_attribute(Attribute::FRAMES, frames as usize);
         state.set_attribute(Attribute::TIME_ON_FRAME, rem_time);
         NodeResult::Next(self.then)
