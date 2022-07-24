@@ -118,7 +118,7 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
     }
 
     fn id(&self) -> NodeID {
-        NodeID::from_str(&self.name)
+        NodeID::from_name(&self.name)
     }
 }
 

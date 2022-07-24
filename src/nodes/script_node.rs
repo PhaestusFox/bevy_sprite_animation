@@ -128,7 +128,7 @@ impl AnimationNode for ScriptNode {
             }
         }
         if let Some(name) = has_name {
-            NodeID::from_str(name)
+            NodeID::from_name(name)
         } else {
             use std::hash::Hash;
             use std::hash::Hasher;

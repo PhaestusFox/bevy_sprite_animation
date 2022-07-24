@@ -244,7 +244,7 @@ impl AnimationNode for IndexNode {
     }
 
     fn id(&self) -> NodeID {
-        NodeID::from_str(&self.name)
+        NodeID::from_name(&self.name)
     }
 }
 

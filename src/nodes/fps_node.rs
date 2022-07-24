@@ -104,7 +104,7 @@ impl AnimationNode for FPSNode {
     }
 
     fn id(&self) -> NodeID {
-        NodeID::from_str(&self.name)
+        NodeID::from_name(&self.name)
     }
 }
 
