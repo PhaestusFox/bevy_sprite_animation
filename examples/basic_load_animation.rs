@@ -4,6 +4,7 @@ use bevy_sprite_animation::prelude::*;
 /// this is an exaple of how to load a single animation from a str and add it to you game
 fn main() {
     App::new()
+    .insert_resource(bevy::render::texture::ImageSettings::default_nearest())
     .add_plugins(DefaultPlugins)
     .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
     .add_startup_system(setup_animations)
@@ -19,7 +20,7 @@ fn setup_animations(
     mut nodes: ResMut<AnimationNodeTree<Zombie>>,
     asset_server: Res<AssetServer>,
 ) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
 
     let nodes = nodes.as_mut();
 

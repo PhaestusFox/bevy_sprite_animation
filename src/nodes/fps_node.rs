@@ -1,5 +1,6 @@
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
+use bevy::reflect::ReflectSerialize;
 use crate::error::BevySpriteAnimationError as Error;
 
 use crate::node_core::CanLoad;

@@ -17,7 +17,9 @@ pub mod system_lable;
 #[cfg(test)]
 mod test{
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
-        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", false), bevy::tasks::TaskPool::new())
+        use bevy::core::DefaultTaskPoolOptions;
+        DefaultTaskPoolOptions::default().create_default_pools();
+        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", false))
     }
 }
 

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
+use bevy::reflect::ReflectSerialize;
 
 #[cfg(test)]
 mod test{

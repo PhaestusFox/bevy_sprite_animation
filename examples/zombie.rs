@@ -152,6 +152,7 @@ mod player {
 
 fn main() {
     App::new()
+    .insert_resource(bevy::render::texture::ImageSettings::default_nearest())
     .add_plugins(DefaultPlugins)
     .add_plugin(animation::YourAnimationPlugin)
     .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
@@ -169,7 +170,7 @@ fn setup_animations(
     mut nodes: ResMut<AnimationNodeTree<Zombie>>,
     asset_server: Res<AssetServer>,
 ) {
-    commands.spawn_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
 
     let nodes = nodes.as_mut();
     nodes.registor_node::<MatchNode::<ZState>>();
