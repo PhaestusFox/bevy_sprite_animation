@@ -20,6 +20,9 @@ pub enum BevySpriteAnimationError {
     #[cfg(feature = "ron")]
     #[error("RonError: {0}")]
     RonError(#[from] ron::Error),
+    #[cfg(feature = "ron")]
+    #[error("RonError: {0}")]
+    RonDeError(#[from] ron::de::SpannedError),
     #[error("{0} Not Found")]
     NodeNotFound(NodeID),
     #[error("{} Not Found", .0.name_or_id())]

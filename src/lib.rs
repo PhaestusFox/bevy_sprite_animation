@@ -17,8 +17,8 @@ pub mod system_lable;
 #[cfg(test)]
 mod test{
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
-        use bevy::core::DefaultTaskPoolOptions;
-        DefaultTaskPoolOptions::default().create_default_pools();
+        use bevy::core::TaskPoolOptions;
+        TaskPoolOptions::default().create_default_pools();
         bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", false))
     }
 }
@@ -79,6 +79,7 @@ impl StartNode {
     }
 }
 
+#[derive(Resource)]
 pub struct AnimationNodeTree<F> {
     nodes: HashMap<node_core::NodeID, Box<dyn node_core::AnimationNode>>,
     #[cfg(feature = "serialize")]

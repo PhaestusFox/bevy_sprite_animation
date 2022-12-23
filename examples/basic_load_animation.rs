@@ -4,8 +4,9 @@ use bevy_sprite_animation::prelude::*;
 /// this is an exaple of how to load a single animation from a str and add it to you game
 fn main() {
     App::new()
-    .insert_resource(bevy::render::texture::ImageSettings::default_nearest())
-    .add_plugins(DefaultPlugins)
+    .add_plugins(DefaultPlugins.set(ImagePlugin {
+        default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
+    }))
     .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
     .add_startup_system(setup_animations)
     .run()
@@ -20,7 +21,7 @@ fn setup_animations(
     mut nodes: ResMut<AnimationNodeTree<Zombie>>,
     asset_server: Res<AssetServer>,
 ) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 
     let nodes = nodes.as_mut();
 
@@ -85,15 +86,15 @@ fn setup_animations(
     let fps_start = nodes.add_node(fps_node);
 
     // spawn SpriteBundle
-    commands.spawn_bundle(SpriteBundle{
+    commands.spawn((SpriteBundle{
         transform: Transform::from_translation(Vec3::X * 10.),
         sprite: Sprite{custom_size: Some(Vec2::splat(1000.)), ..Default::default()},
         ..Default::default()
-    })
+    },
     // add animation flag
-    .insert(Zombie)
+    Zombie,
     // add default AnimationState
-    .insert(AnimationState::default())
+    AnimationState::default(),
     // add a startnode to our entity with the fps node as its first node
-    .insert(StartNode::from_nodeid(fps_start));
+    StartNode::from_nodeid(fps_start)));
 }

@@ -222,7 +222,7 @@ impl AnimationNode for IndexNode {
             if let Some(path) = asset_server.get_handle_path(frame) {
                 data.push_str(path.path().to_str().unwrap())
             } else {
-                return Err(Error::AssetPathNotFound(frame.as_weak()));
+                return Err(Error::AssetPathNotFound(frame.clone_weak()));
             }
             data.push_str(",\n\t");
         }

@@ -107,7 +107,7 @@ impl AnimationState {
     fn insert_test<D: Serialize + DeserializeOwned>(&mut self, key: Attribute, val: &str) -> Result<(), Error> {
         match ron::from_str::<D>(val) {
             Ok(v) => {self.set_attribute(key, v); Ok(())},
-            Err(e) => Err(Error::RonError(e)),
+            Err(e) => Err(Error::RonDeError(e)),
         }
     }
 

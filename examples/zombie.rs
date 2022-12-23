@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::texture::ImageSampler};
 use bevy_sprite_animation::prelude::*;
 
 use animation::ZState;
@@ -152,8 +152,9 @@ mod player {
 
 fn main() {
     App::new()
-    .insert_resource(bevy::render::texture::ImageSettings::default_nearest())
-    .add_plugins(DefaultPlugins)
+    .add_plugins(DefaultPlugins.set(ImagePlugin {
+        default_sampler: ImageSampler::nearest_descriptor(),
+    }))
     .add_plugin(animation::YourAnimationPlugin)
     .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
     .add_startup_system(setup_animations)
@@ -170,7 +171,7 @@ fn setup_animations(
     mut nodes: ResMut<AnimationNodeTree<Zombie>>,
     asset_server: Res<AssetServer>,
 ) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
 
     let nodes = nodes.as_mut();
     nodes.registor_node::<MatchNode::<ZState>>();
@@ -199,14 +200,15 @@ fn setup_animations(
     start.set_temporary(fall_index);
     start.set_temporary(stand_index);
     start.set_temporary(attack_index);
-    commands.spawn_bundle(SpriteBundle{
+    commands.spawn((SpriteBundle{
         transform: Transform::from_translation(Vec3::X * 10.),
         sprite: Sprite{custom_size: Some(Vec2::splat(1000.)), ..Default::default()},
         ..Default::default()
-    })
-    .insert(Zombie)
-    .insert(ZState::Attacking)
-    .insert(start)
-    .insert(player::Player)
-    .insert(StartNode::from_str("0x0"));
+    },
+    Zombie,
+    ZState::Attacking,
+    start,
+    player::Player,
+    StartNode::from_str("0x0")
+    ));
 }

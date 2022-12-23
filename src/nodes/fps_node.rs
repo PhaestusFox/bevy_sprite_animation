@@ -84,7 +84,7 @@ impl AnimationNode for FPSNode {
     {
         let mut buf =  Vec::new();
         let pretty = ron::ser::PrettyConfig::default().new_line("\n\t".to_string());
-        let mut serializer = ron::Serializer::new(&mut buf, Some(pretty), true)?;
+        let mut serializer = ron::Serializer::new(&mut buf, Some(pretty))?;
         serde::Serialize::serialize(self, &mut serializer)?;
         data.push_str(&String::from_utf8_lossy(&buf));
         data.push(',');
