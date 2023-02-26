@@ -52,15 +52,15 @@ fn setup_animations(
     // this sets all the frames in order that the index node goes thrue
     index_data.push_str("
     frames: [
-    Zombie1/zombie1_00000.png,
-    Zombie1/zombie1_00001.png,
-    Zombie1/zombie1_00002.png,
-    Zombie1/zombie1_00003.png,
-    Zombie1/zombie1_00004.png,
-    Zombie1/zombie1_00005.png,
-    Zombie1/zombie1_00006.png,
-    Zombie1/zombie1_00007.png,
-    Zombie1/zombie1_00008.png,
+    Zombie1/Zombie1_00000.png,
+    Zombie1/Zombie1_00001.png,
+    Zombie1/Zombie1_00002.png,
+    Zombie1/Zombie1_00003.png,
+    Zombie1/Zombie1_00004.png,
+    Zombie1/Zombie1_00005.png,
+    Zombie1/Zombie1_00006.png,
+    Zombie1/Zombie1_00007.png,
+    Zombie1/Zombie1_00008.png,
     ],");
     
     // set if the animation should loop
