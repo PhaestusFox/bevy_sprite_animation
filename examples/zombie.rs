@@ -13,8 +13,8 @@ mod animation {
 
     impl Plugin for YourAnimationPlugin {
         fn build(&self, app: &mut App) {
-            app.add_system(zombie_state_update.before(AnimationLabel::Update));
-            app.add_system(zombie_update_state.after(AnimationLabel::Update));
+            app.add_system(zombie_state_update.before(AnimationSet::Update));
+            app.add_system(zombie_update_state.after(AnimationSet::Update));
         }
     }
 
