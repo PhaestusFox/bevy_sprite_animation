@@ -71,6 +71,7 @@ impl AnimationNode for FPSNode {
         let rem_time = time - self.frame_time() * frames;
         state.set_attribute(Attribute::FRAMES, frames as usize);
         state.set_attribute(Attribute::TIME_ON_FRAME, rem_time);
+        state.set_attribute(Attribute::LAST_FPS, self.frame_time());
         NodeResult::Next(self.then)
     }
 

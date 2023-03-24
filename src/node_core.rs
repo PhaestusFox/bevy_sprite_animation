@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use crate::error::BevySpriteAnimationError as Error;
 
-pub trait AnimationNode: Send + Sync
+pub trait AnimationNode: Send + Sync + Any
 {
     fn run(&self, state: &mut super::state::AnimationState) -> NodeResult;
     fn name(&self) -> &str;
@@ -28,7 +28,7 @@ pub trait CanLoad {
 #[derive(Debug, Default ,Hash, PartialEq, Eq, Clone, Copy, Reflect)]
 pub struct NodeID(u64);
 
-use std::collections::HashMap;
+use std::{collections::HashMap, any::Any};
 lazy_static::lazy_static! {
     static ref NODE_ID_NAMES: std::sync::Mutex<HashMap<NodeID, String>> = {
         let map = HashMap::new();

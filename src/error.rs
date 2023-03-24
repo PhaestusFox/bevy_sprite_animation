@@ -52,6 +52,9 @@ pub enum BevySpriteAnimationError {
     #[cfg(feature = "serialize")]
     #[error("Failed to parse int: {0}")]
     ParseIntError(#[from] std::num::ParseIntError),
+    #[cfg(feature = "serialize")]
+    #[error("Failed to parse float: {0}")]
+    ParseFloatError(#[from] std::num::ParseFloatError),
     #[cfg(feature = "ron")]
     #[error("Failed to find typeid for: {0};\n you must set a attribute once before a script node can set it")]
     NoTypeId(Attribute),

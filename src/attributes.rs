@@ -74,6 +74,7 @@ impl Attribute {
     pub const TIME_ON_FRAME: Attribute = Attribute(3);
     pub const FLIP_X: Attribute = Attribute(4);
     pub const FLIP_Y: Attribute = Attribute(5);
+    pub const LAST_FPS: Attribute = Attribute(6);
     pub const INDEX: Attribute = Attribute(256);
 
     #[inline(always)]
