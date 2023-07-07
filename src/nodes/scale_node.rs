@@ -194,6 +194,7 @@ impl AnimationNode for ScaleNode {
 
         state.set_attribute(Attribute::LAST_FPS, last * scale);
         state.set_attribute(Attribute::TIME_ON_FRAME, frame_time);
+        state.set_attribute(Attribute::FRAMES, frames as usize);
         state.set_attribute(self.index, index);
         NodeResult::Next(self.next)
     }
