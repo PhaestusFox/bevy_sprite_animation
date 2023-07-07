@@ -184,6 +184,7 @@ lazy_static::lazy_static! {
         map.insert(Attribute::FRAMES,           "Frames".to_string());
         map.insert(Attribute::FLIP_X,           "FlipX".to_string());
         map.insert(Attribute::FLIP_Y,           "FlipY".to_string());
+        map.insert(Attribute::LAST_FPS,         "LAST_FPS".to_string());
         std::sync::Mutex::new(map)
     };
 }

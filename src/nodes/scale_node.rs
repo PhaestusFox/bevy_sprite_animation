@@ -204,7 +204,7 @@ impl AnimationNode for ScaleNode {
     }
 
     #[cfg(feature = "serialize")]
-    fn serialize(&self, data: &mut String, asset_server: &bevy::prelude::AssetServer) -> Result<(), Error>
+    fn serialize(&self, data: &mut String, _: &bevy::prelude::AssetServer) -> Result<(), Error>
     {
         let mut buf =  Vec::new();
         let pretty = ron::ser::PrettyConfig::default().new_line("\n\t".to_string());

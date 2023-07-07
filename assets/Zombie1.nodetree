@@ -155,10 +155,10 @@ IndexNode(
 	is_loop: false,
 	index: IndexName("Stand"),
 	),
-NodeID("0x0000000000000002"):ScailNode(
-	name: "WalkScail",
+NodeID("0x0000000000000002"):ScaleNode(
+	name: "WalkScale",
 	next: NodeID("0x1700B9C67B93A42F"),
-	scail: AttributeName("WSpeed"),
+	scale: AttributeName("WSpeed"),
 	index: IndexID(256),
 )
 ]

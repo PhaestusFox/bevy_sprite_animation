@@ -105,6 +105,7 @@ fn default_loaders() -> HashMap<String, Box<dyn NodeLoader>> {
     map.insert("IndexNode".to_string(),IndexNode::loader());
     map.insert("FPSNode".to_string(), FPSNode::loader());
     map.insert("ScriptNode".to_string(), ScriptNode::loader());
+    map.insert("ScaleNode".to_string(), ScaleNode::loader());
     map
 }
 
