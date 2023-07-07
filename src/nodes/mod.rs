@@ -8,3 +8,4 @@ pub mod index_node;
 pub mod fps_node;
 pub mod match_node;
 pub mod script_node;
+pub mod scale_node;

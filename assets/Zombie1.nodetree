@@ -26,7 +26,7 @@ NodeID("0x0000000000000001"):MatchNode<zombie::animation::ZState>(
 	(StandF, ("0x1E527169B5475656")),
 	(FallB, ("0x9F4BD19B423E940A")),
 	(FallF, ("0x6EE62A603E81AD8B")),
-	(Walking, ("0x1700B9C67B93A42F")),
+	(Walking, ("0x0000000000000002")),
 	(Attacking, ("0x8EA5288868FD8F3A")),
 	(Running, ("0x523587637DC7A79D")),
 	(Test, ("0x3")),
@@ -155,4 +155,10 @@ IndexNode(
 	is_loop: false,
 	index: IndexName("Stand"),
 	),
+NodeID("0x0000000000000002"):ScailNode(
+	name: "WalkScail",
+	next: NodeID("0x1700B9C67B93A42F"),
+	scail: AttributeName("WSpeed"),
+	index: IndexID(256),
+)
 ]
