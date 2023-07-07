@@ -158,33 +158,22 @@ impl<F> AnimationNodeTree<F> {
     }
 
     #[cfg(feature = "serialize")]
-    pub fn load<P: Into<std::path::PathBuf>>(&mut self, path: P, asset_server: &AssetServer) -> Result<(), Error>{
-        use std::fs;
-        use std::path::PathBuf;
-        let path: PathBuf = path.into();
-
-        let path = if path.is_relative() {
-            let mut new_path = PathBuf::from("./assets");
-            new_path.push(path);
-            new_path
-        } else {
-            path
-        };
-
-        let tree = if let Some(ext) = path.as_path().extension() {
+    pub fn load<P: AsRef<std::path::Path>>(&mut self, path: P, asset_server: &AssetServer) -> Result<(), Error>{
+        let io = asset_server.asset_io().load_path(path.as_ref());
+        
+        let tree = if let Some(ext) = path.as_ref().extension() {
             let t = ext == "nodetree";
             if !(ext == "node" || t) {
                 return Err(Error::InvalidExtension(ext.to_str().unwrap().to_string()));
             }
             t
         } else {false};
-
-        let data = fs::read_to_string(path.as_path())?;
+        let data = String::from_utf8(futures_lite::future::block_on(io)?)?;
 
         if tree {
-            info!("loaded {:?} from {:?}",self.load_tree_from_str(&data, asset_server)?,path);
+            info!("loaded {:?} from {:?}",self.load_tree_from_str(&data, asset_server)?, path.as_ref());
         } else {
-            info!("loaded {} from {:?}",self.load_node_from_str(&data, asset_server)?,path);
+            info!("loaded {} from {:?}",self.load_node_from_str(&data, asset_server)?, path.as_ref());
         }
         Ok(())
     }

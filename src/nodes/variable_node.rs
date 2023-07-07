@@ -58,7 +58,6 @@ mod test {
     #[test]
     #[cfg(feature = "serialize")]
     fn deserialize_full_str() {
-        use std::any::Any;
         let asset_server = test_asset_server();
         let mut handles = Vec::new();
         for i in 0..3 {

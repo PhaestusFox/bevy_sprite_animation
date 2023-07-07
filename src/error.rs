@@ -58,6 +58,10 @@ pub enum BevySpriteAnimationError {
     #[cfg(feature = "ron")]
     #[error("Failed to find typeid for: {0};\n you must set a attribute once before a script node can set it")]
     NoTypeId(Attribute),
+    #[error("asset IO")]
+    AssetIo(#[from]bevy::asset::AssetIoError),
+    #[error("bytes to string err")]
+    StringErr(#[from]std::string::FromUtf8Error),
 }
 
 #[macro_export]
