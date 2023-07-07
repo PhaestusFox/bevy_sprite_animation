@@ -185,14 +185,14 @@ impl AnimationNode for ScaleNode {
         let rem_time = state.get_attribute::<f32>(&Attribute::TIME_ON_FRAME);
         let frames = state.get_attribute::<usize>(&Attribute::FRAMES);
         let last = state.get_attribute::<f32>(&Attribute::LAST_FPS);
-        let Scale = state.get_attribute::<f32>(&self.scale);
+        let scale = state.try_get_attribute::<f32>(&self.scale).unwrap_or(1.);
         let mut frame_time = last * frames as f32 + rem_time;
-        let width = last * Scale;
+        let width = last * scale;
         let frames = (frame_time / width).floor();
         frame_time -= frames * width;
         index += frames as usize;
 
-        state.set_attribute(Attribute::LAST_FPS, last * Scale);
+        state.set_attribute(Attribute::LAST_FPS, last * scale);
         state.set_attribute(Attribute::TIME_ON_FRAME, frame_time);
         state.set_attribute(self.index, index);
         NodeResult::Next(self.next)
