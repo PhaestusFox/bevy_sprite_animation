@@ -1,6 +1,7 @@
 use bevy::prelude::AssetServer;
 use bevy::log::error;
-use crate::{prelude::{NodeID, Attribute, AnimationNode, NodeResult, BevySpriteAnimationError}, state::AnimationState};
+use crate::{prelude::{NodeId, Attribute, AnimationNodeTrait, NodeResult, BevySpriteAnimationError}, state::AnimationState};
+use std::str::FromStr;
 
 #[cfg(test)]
 mod test {
@@ -12,7 +13,7 @@ mod test {
     fn serialize_deserialize() {
         use crate::node_core::CanLoad;
         let asset_server = test_asset_server();
-        let node = ScriptNode::new("#id NodeID(0x1) #fallback NodeID(Zombie{i}_Idle) if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeID(Zombie1_StandF)");
+        let node = ScriptNode::new("#id NodeId(0x1) #fallback NodeId(Zombie{i}_Idle) if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeId(Zombie1_StandF)");
 
         
         let mut data = String::new();
@@ -23,11 +24,11 @@ mod test {
     }
 }
 
-impl AnimationNode for ScriptNode {
+impl AnimationNodeTrait for ScriptNode {
     fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
         let mut index = 0;
         while index < self.tokens.len() {
-            match self.tokens[index] {
+            match &self.tokens[index] {
                 Token::If => {
                     if if_condishion(state, &self.tokens[index + 1], &self.tokens[index + 2], &self.tokens[index + 3]) {
                         index += 4;
@@ -67,7 +68,7 @@ impl AnimationNode for ScriptNode {
                     index += 3;
                 },
                 Token::Return(id) => {
-                    return NodeResult::Next(id);
+                    return NodeResult::Next(id.to_static());
                 }
                 _ => {
                     bevy::log::info!("pointer {}", index);
@@ -76,13 +77,13 @@ impl AnimationNode for ScriptNode {
                 }
             }
         }
-        if let Some(fallback) = self.fallback {
+        if let Some(fallback) = &self.fallback {
             bevy::log::warn!("fallback {:?} used", fallback);
-            NodeResult::Next(fallback)
+            NodeResult::Next(fallback.to_static())
         }
         else {
             NodeResult::Error("ScriptNode: failed to find a node to return and no fallback was set;\n
-            use #fallback followed by a NodeID at the begging of you script to set a fallback node".to_string())
+            use #fallback followed by a NodeId at the begging of you script to set a fallback node".to_string())
         }
     }
 
@@ -117,18 +118,18 @@ impl AnimationNode for ScriptNode {
         hasher.finish()
     }
 
-    fn id(&self) -> NodeID {
+    fn id(&self) -> NodeId {
         let mut has_name = None;
         for tag in self.tags.iter() {
             if let Tag::Name(name) = tag {
                 has_name = Some(name);
             }
             if let Tag::ID(id) = tag {
-                return *id;
+                return id.to_static();
             }
         }
         if let Some(name) = has_name {
-            NodeID::from_name(&name)
+            NodeId::Name(name.into())
         } else {
             use std::hash::Hash;
             use std::hash::Hasher;
@@ -139,7 +140,7 @@ impl AnimationNode for ScriptNode {
             for token in self.tokens.iter() {
                 Hash::hash(token, &mut hasher);
             }
-            NodeID::from_u64(hasher.finish())
+            NodeId::from_u64(hasher.finish())
         }
     }
 
@@ -150,9 +151,9 @@ impl AnimationNode for ScriptNode {
             data.push_str(&tag.to_string());
             data.push('\n');
         }
-        if self.fallback.is_some() {
+        if let Some(fallback) = &self.fallback {
             data.push_str("#fallback ");
-            data.push_str(&self.fallback.unwrap().to_string());
+            data.push_str(&format!("{}", fallback));
             data.push('\n');
         }
         for token in self.tokens.iter() {
@@ -181,7 +182,7 @@ enum Token {
     Set,
     Attribute(Attribute),
     Index(Attribute),
-    NodeID(NodeID),
+    NodeId(NodeId<'static>),
     OpenParen(u8),
     CloseParen(u8),
     Multiply,
@@ -189,7 +190,7 @@ enum Token {
     None,
     If,
     Else,
-    Return(NodeID),
+    Return(NodeId<'static>),
     Ron(String),
     Unknown(String),
 }
@@ -231,7 +232,7 @@ impl ToString for Token {
 #[derive(Debug, Hash, PartialEq, Eq)]
 enum Tag {
     Name(String),
-    ID(NodeID),
+    ID(NodeId<'static>),
 }
 
 impl ToString for Tag {
@@ -246,7 +247,7 @@ impl ToString for Tag {
 pub struct ScriptNode {
     tokens: Vec<Token>,
     tags: Vec<Tag>,
-    fallback: Option<NodeID>,
+    fallback: Option<NodeId<'static>>,
 }
 
 impl ScriptNode {
@@ -283,11 +284,11 @@ impl ScriptNode {
                     },
                     "id" => {
                         let next = words.next().expect("id to follow #id");
-                        tags.push(Tag::ID(NodeID::from_str(next)));
+                        tags.push(Tag::ID(NodeId::from_str(next).unwrap()));
                     },
                     "fallback" => {
                         let next = words.next().expect("fallback to follow #fallback");
-                        fallback = Some(NodeID::from_str(next));
+                        fallback = Some(NodeId::from_str(next).unwrap());
                     },
                     _ => bevy::log::warn!("unknown tag: #{}", first)
                 }
@@ -325,9 +326,9 @@ impl ScriptNode {
                 }
                 continue;
             }
-            if word.starts_with("NodeID(") {
+            if word.starts_with("NodeId(") {
                 if word.ends_with(')') {
-                    tokens.push(Token::NodeID(NodeID::from_str(word)));
+                    tokens.push(Token::NodeId(NodeId::from_str(word).unwrap()));
                 } else {
                     let mut name = word[7..].to_string();
                     while !name.ends_with(')') {
@@ -335,7 +336,21 @@ impl ScriptNode {
                         name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
                     }
                     name.pop();
-                    tokens.push(Token::NodeID(NodeID::from_str(&name)));
+                    tokens.push(Token::NodeId(NodeId::from_str(&name).unwrap()));
+                }
+                continue;
+            }
+            if word.starts_with("NodeName(") {
+                if word.ends_with(')') {
+                    tokens.push(Token::NodeId(NodeId::from_str(word).unwrap()));
+                } else {
+                    let mut name = word[9..].to_string();
+                    while !name.ends_with(')') {
+                        name.push(' ');
+                        name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
+                    }
+                    name.pop();
+                    tokens.push(Token::NodeId(NodeId::from_str(&name).unwrap()));
                 }
                 continue;
             }
@@ -415,7 +430,7 @@ impl ScriptNode {
                 "else" => {Token::Else},
                 "set" => {Token::Set},
                 "none" => {Token::None},
-                "return" => {Token::Return(NodeID::from_str(words.next().expect("NodeID to follow return")))},
+                "return" => {Token::Return(NodeId::from_str(words.next().expect("NodeId to follow return")).unwrap())},
                 _ => {Token::Unknown(word.to_string())}
             };
             tokens.push(token);
@@ -482,7 +497,7 @@ fn if_condishion(state: &AnimationState, lhs: &Token, op: &Token, rhs: &Token) -
 mod serialize {
     use bevy::prelude::AssetServer;
     use crate::error::BevySpriteAnimationError as Error;
-    use crate::{node_core::CanLoad, prelude::{NodeLoader, AnimationNode}};
+    use crate::{node_core::CanLoad, prelude::{NodeLoader, AnimationNodeTrait}};
     use super::ScriptNode;
 
     impl CanLoad for ScriptNode {
@@ -493,7 +508,7 @@ mod serialize {
     pub struct ScriptNodeLoader;
 
     impl NodeLoader for ScriptNodeLoader {
-        fn load(&mut self, data: &str, _: &AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
+        fn load(&mut self, data: &str, _: &AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
             let data = data.trim();
             let data = if data.starts_with("ScriptNode(") {
                 if data.ends_with("),") {

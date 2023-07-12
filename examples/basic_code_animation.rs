@@ -7,7 +7,7 @@ fn main() {
     .add_plugins(DefaultPlugins.set(ImagePlugin {
         default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
     }))
-    .add_plugins(SpriteAnimationPlugin::<Zombie>::default())
+    .add_plugins(SpriteAnimationPlugin)
     .add_systems(Startup, setup_animations)
     .run()
 }
@@ -18,8 +18,9 @@ struct Zombie;
 
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree<Zombie>>,
+    mut nodes: ResMut<AnimationNodeTree>,
     asset_server: Res<AssetServer>,
+    mut assets: ResMut<Assets<AnimationNode>>,
 ) {
     commands.spawn(Camera2dBundle::default());
 
@@ -31,8 +32,10 @@ fn setup_animations(
         images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
     }
 
+    let start = NodeId::from_u64(0x1);
+
     // Add a new IndexNode with a custom id of 0x1
-    nodes.insert_node(NodeID::from_u64(0x1), Box::new(
+    let index = assets.set(NodeId::from_u64(0x1), AnimationNode::new(
         bevy_sprite_animation::nodes::IndexNode::new(
         // this node will be called test
         "test",
@@ -42,14 +45,14 @@ fn setup_animations(
         true)
     ));
     // Add a node with a self generated id
-    let fps_start = nodes.add_node(Box::new(
+    let fps_start = assets.set(start.to_static(), AnimationNode::new(
         bevy_sprite_animation::nodes::FPSNode::new(
         // this node is call fps
         "fps",
         // it will change frames 7 times a seconed
         7,
         // it will go to the frame we just inserted with an id of 0x1
-        NodeID::from_u64(0x1))
+        NodeId::from_u64(0x1))
     ));
 
 
@@ -64,5 +67,5 @@ fn setup_animations(
     // add default AnimationState
     AnimationState::default(),
     // add a startnode to our entity with the fps node as its first node
-    StartNode::from_nodeid(fps_start)));
+    StartNode(start)));
 }

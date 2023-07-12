@@ -11,7 +11,7 @@ use crate::prelude::*;
 pub struct FPSNode {
     name: String,
     fps: u32,
-    then: NodeID,
+    then: NodeId<'static>,
 }
 
 #[cfg(feature = "bevy-inspector-egui")]
@@ -39,7 +39,7 @@ impl std::hash::Hash for FPSNode {
 }
 
 impl FPSNode {
-    pub fn new(name: &str, fps: u32, next: impl Into<NodeID>) -> FPSNode{
+    pub fn new(name: &str, fps: u32, next: impl Into<NodeId<'static>>) -> FPSNode{
         FPSNode{
             name: name.to_string(),
             fps,
@@ -58,7 +58,7 @@ impl CanLoad for FPSNode {
         Box::new(FPSNodeLoader)
     }
 }
-impl AnimationNode for FPSNode {
+impl AnimationNodeTrait for FPSNode {
     fn name(&self) -> &str {
         &self.name
     }
@@ -72,7 +72,7 @@ impl AnimationNode for FPSNode {
         state.set_attribute(Attribute::FRAMES, frames as usize);
         state.set_attribute(Attribute::TIME_ON_FRAME, rem_time);
         state.set_attribute(Attribute::LAST_FPS, self.frame_time());
-        NodeResult::Next(self.then)
+        NodeResult::Next(self.then.to_static())
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
@@ -106,8 +106,8 @@ impl AnimationNode for FPSNode {
         hasher.finish()
     }
 
-    fn id(&self) -> NodeID {
-        NodeID::from_name(&self.name)
+    fn id(&self) -> NodeId {
+        NodeId::Name((&self.name).into())
     }
 }
 
@@ -123,7 +123,7 @@ mod loader {
     pub struct FPSNodeLoader;
 
     impl NodeLoader for FPSNodeLoader {
-        fn load(&mut self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNode>, crate::error::BevySpriteAnimationError> {
+        fn load(&mut self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
         let node: FPSNode = ron::from_str(data)?;
         Ok(Box::new(node))
     }

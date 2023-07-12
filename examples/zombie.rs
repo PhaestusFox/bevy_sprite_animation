@@ -155,7 +155,7 @@ fn main() {
         default_sampler: ImageSampler::nearest_descriptor(),
     }))
     .add_plugins((animation::YourAnimationPlugin,
-        SpriteAnimationPlugin::<Zombie>::default(),
+        SpriteAnimationPlugin,
         player::Player))
     .add_systems(Startup ,setup_animations)
     .run()
@@ -167,9 +167,14 @@ struct Zombie;
 
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree<Zombie>>,
+    mut nodes: ResMut<AnimationNodeTree>,
     asset_server: Res<AssetServer>,
+    mut assets: ResMut<Assets<AnimationNode>>,
 ) {
+
+    let fps_node = FPSNode::new("ZombieFPS", 7, NodeId::from_u64(1));
+    println!("\n\n{}\n\n", ron::ser::to_string_pretty(&fps_node, ron::ser::PrettyConfig::default()).unwrap());
+
     commands.spawn(Camera2dBundle::default());
 
     let nodes = nodes.as_mut();
@@ -179,20 +184,27 @@ fn setup_animations(
     for i in 0..=67 {
         images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
     }
-    nodes.insert_node(NodeID::from_u64(0x3), Box::new(
+    let test = assets.set(NodeId::from_u64(0x3), AnimationNode::new(
         bevy_sprite_animation::nodes::IndexNode::new("test", &images, true)
     ));
+
+    nodes.add_node(test);
 
     let fall_index = Attribute::new_index("Fall");
     let stand_index = Attribute::new_index("Stand");
     let attack_index = Attribute::new_index("Attack");
 
-    if let Err(e) = nodes.load("test.node", &asset_server) {
-        error!("{}", e)
+    if let Err(e) = nodes.load("test.node", &asset_server, &mut assets) {
+        match e {
+            BevySpriteAnimationError::RonDeError(e) => {
+                println!("\n Error {} @ assets\\test.node:{}:{}\n", e, e.position.line, e.position.col);
+            },
+            e => error!("Test Node: {}", e),
+        }
     }
 
-    if let Err(e) = nodes.load("./Zombie1.nodetree", &asset_server) {
-        error!("{}", e)
+    if let Err(e) = nodes.load("./Zombie1.nodetree", &asset_server, &mut assets) {
+        error!("Test Tree: {}", e)
     }
 
     let mut start = AnimationState::default();
@@ -208,6 +220,6 @@ fn setup_animations(
     ZState::Attacking,
     start,
     player::Player,
-    StartNode::from_str("0x0")
+    StartNode::from_u64(0)
     ));
 }

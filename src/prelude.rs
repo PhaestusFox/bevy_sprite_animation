@@ -1,7 +1,8 @@
 pub use super::attributes::Attribute;
 pub use super::error::BevySpriteAnimationError;
-pub use super::node_core::AnimationNode;
-pub use super::node_core::NodeID;
+pub use super::node_core::AnimationNodeTrait;
+pub use super::node_id::NodeId;
+pub use super::AnimationNode;
 pub use super::node_core::NodeLoader;
 pub use super::node_core::NodeResult;
 pub use super::nodes::*;

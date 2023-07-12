@@ -13,7 +13,7 @@ mod test {
     #[cfg(feature = "serialize")]
     fn deserialize_clean_str() {
         use super::IndexNode;
-        use crate::node_core::AnimationNode;
+        use crate::node_core::AnimationNodeTrait;
         use crate::node_core::NodeLoader;
         use super::IndexNodeLoader;
         let asset_server = test_asset_server();
@@ -36,7 +36,7 @@ mod test {
     #[cfg(feature = "serialize")]
     fn deserialize_capped_str() {
         use super::IndexNode;
-        use crate::node_core::AnimationNode;
+        use crate::node_core::AnimationNodeTrait;
         use crate::node_core::NodeLoader;
         use super::IndexNodeLoader;
         let asset_server = test_asset_server();
@@ -55,7 +55,7 @@ mod test {
             ],
             ),
         ", &asset_server).unwrap();
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
+        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         assert_eq!(test_node.hash(), true_node.hash());
     }
 
@@ -63,7 +63,7 @@ mod test {
     #[cfg(feature = "serialize")]
     fn deserialize_full_str() {
         use super::IndexNode;
-        use crate::node_core::AnimationNode;
+        use crate::node_core::AnimationNodeTrait;
         use crate::node_core::NodeLoader;
         use super::IndexNodeLoader;
         let asset_server = test_asset_server();
@@ -83,7 +83,7 @@ mod test {
             is_loop: true,
             ),
         ", &asset_server).unwrap();
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
+        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         assert_eq!(test_node.hash(), true_node.hash());
     }
 
@@ -91,13 +91,13 @@ mod test {
     #[cfg(feature = "serialize")]
     fn serialize_str_pretty() {
         use super::IndexNode;
-        use crate::node_core::AnimationNode;
+        use crate::node_core::AnimationNodeTrait;
         let asset_server = test_asset_server();
         let mut handles = Vec::new();
         for i in 0..3 {
             handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
         }
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
+        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         let mut res = String::new();
         let ser_res = true_node.serialize(&mut res, &asset_server);
         assert!(ser_res.is_ok(), "{}", ser_res.err().unwrap());
@@ -109,14 +109,14 @@ mod test {
     fn serialize_deserialize() {
         use super::IndexNode;
         use crate::node_core::NodeLoader;
-        use crate::node_core::AnimationNode;
+        use crate::node_core::AnimationNodeTrait;
         use super::IndexNodeLoader;
         let asset_server = test_asset_server();
         let mut handles = Vec::new();
         for i in 0..3 {
             handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
         }
-        let true_node: Box<dyn AnimationNode> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
+        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         let mut res = String::new();
         assert!(true_node.serialize(&mut res, &asset_server).is_ok());
         let mut loader = IndexNodeLoader;
@@ -181,7 +181,7 @@ impl CanLoad for IndexNode {
     }
 }
 
-impl AnimationNode for IndexNode {
+impl AnimationNodeTrait for IndexNode {
     fn name(&self) -> &str {
         &self.name
     }
@@ -243,8 +243,8 @@ impl AnimationNode for IndexNode {
         hasher.finish()
     }
 
-    fn id(&self) -> NodeID {
-        NodeID::from_name(&self.name)
+    fn id(&self) -> NodeId {
+        NodeId::Name((&self.name).into())
     }
 }
 
@@ -257,11 +257,11 @@ use crate::{node_core::NodeLoader, prelude::Attribute};
 use std::collections::HashMap;
 use super::IndexNode;
 
-use crate::prelude::{AnimationNode, BevySpriteAnimationError as Error};
+use crate::prelude::{AnimationNodeTrait, BevySpriteAnimationError as Error};
 pub struct IndexNodeLoader;
 
 impl NodeLoader for IndexNodeLoader {
-    fn load(&mut self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
+    fn load(&mut self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
         let data = data.trim();
         let data = if data.starts_with("IndexNode(") {&data[10..]} else {data};
         let mut chars = data.chars().peekable();
@@ -312,7 +312,9 @@ impl NodeLoader for IndexNodeLoader {
             return Err(Error::DeserializeError{
                 node_type: "IndexNode",
                 message: "Failed to find frames".to_string(),
-                loc: crate::here!()});
+                loc: crate::here!(),
+                raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Frames", outer: None }, position: ron::de::Position{line: 0, col: 0}},
+            });
         } {
             if path.trim().len() == 0 {
                 continue;
@@ -336,7 +338,8 @@ impl NodeLoader for IndexNodeLoader {
             return Err(Error::DeserializeError{
                 node_type: "IndexNode",
                 message: "Failed to find name".to_string(),
-                loc: crate::here!()
+                loc: crate::here!(),
+                raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Name", outer: None }, position: ron::de::Position{line: 0, col: 0}},
                 });
         };
         Ok(Box::new(IndexNode {

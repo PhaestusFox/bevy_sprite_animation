@@ -1,6 +1,5 @@
 use crate::node_core::CanLoad;
 use crate::prelude::*;
-use bevy::reflect::Reflect;
 use serde::{Serialize, Deserialize};
 use crate::error::BevySpriteAnimationError as Error;
 
@@ -117,12 +116,12 @@ mod test {
     // }
 }
 
-#[derive(Debug, Reflect, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ScaleNode{
     name: String,
     index: Attribute,
     scale: Attribute,
-    next: NodeID,
+    next: NodeId<'static>,
 }
 
 #[cfg(feature = "bevy-inspector-egui")]
@@ -144,7 +143,7 @@ impl bevy_inspector_egui::Inspectable for IndexNode {
 
 impl ScaleNode {
     #[inline(always)]
-    pub fn new(name: &str, scale: Attribute, next: NodeID) -> ScaleNode {
+    pub fn new(name: &str, scale: Attribute, next: NodeId<'static>) -> ScaleNode {
         ScaleNode { 
             name: name.to_string(),
             index: Attribute::INDEX,
@@ -154,7 +153,7 @@ impl ScaleNode {
     }
 
     #[inline(always)]
-    pub fn new_with_index(name: &str, index: Attribute, scale: Attribute, next: NodeID) -> ScaleNode {
+    pub fn new_with_index(name: &str, index: Attribute, scale: Attribute, next: NodeId<'static>) -> ScaleNode {
         ScaleNode { 
             name: name.to_string(),
             index,
@@ -171,7 +170,7 @@ impl CanLoad for ScaleNode {
     }
 }
 
-impl AnimationNode for ScaleNode {
+impl AnimationNodeTrait for ScaleNode {
     fn name(&self) -> &str {
         &self.name
     }
@@ -196,7 +195,7 @@ impl AnimationNode for ScaleNode {
         state.set_attribute(Attribute::TIME_ON_FRAME, frame_time);
         state.set_attribute(Attribute::FRAMES, frames as usize);
         state.set_attribute(self.index, index);
-        NodeResult::Next(self.next)
+        NodeResult::Next(self.next.to_static())
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
@@ -229,8 +228,8 @@ impl AnimationNode for ScaleNode {
         hasher.finish()
     }
 
-    fn id(&self) -> NodeID {
-        NodeID::from_name(&self.name)
+    fn id(&self) -> NodeId {
+        NodeId::Name((&self.name).into())
     }
 }
 
@@ -239,14 +238,14 @@ pub use loader::ScaleNodeLoader;
 
 #[cfg(feature = "serialize")]
 mod loader {
-use crate::{node_core::NodeLoader};
+use crate::node_core::NodeLoader;
 use super::ScaleNode;
 
-use crate::prelude::{AnimationNode, BevySpriteAnimationError as Error};
+use crate::prelude::{AnimationNodeTrait, BevySpriteAnimationError as Error};
 pub struct  ScaleNodeLoader;
 
 impl NodeLoader for ScaleNodeLoader {
-    fn load(&mut self, data: &str, _: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
+    fn load(&mut self, data: &str, _: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
         Ok(Box::new(ron::from_str::<ScaleNode>(data)?))
     }
 

@@ -7,7 +7,7 @@ fn main() {
     .add_plugins(DefaultPlugins.set(ImagePlugin {
         default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
     }))
-    .add_plugins(SpriteAnimationPlugin::<Zombie>::default())
+    .add_plugins(SpriteAnimationPlugin)
     .add_systems(Startup, setup_animations)
     .run()
 }
@@ -18,8 +18,9 @@ struct Zombie;
 
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree<Zombie>>,
+    mut nodes: ResMut<AnimationNodeTree>,
     asset_server: Res<AssetServer>,
+    mut assets: ResMut<Assets<AnimationNode>>,
 ) {
     commands.spawn(Camera2dBundle::default());
 
@@ -33,7 +34,7 @@ fn setup_animations(
 
     // prefix index data with a node id followed by a : so that it gets a specifide id
     // this is optional but used here to make index node easy to remember in fps nodes then feld
-    index_data.push_str("NodeID(\"0x0000000000000001\"):");
+    index_data.push_str("NodeId(\"0x0000000000000001\"):");
 
     // start a node with its node type followed by an (
     // this allows the correct loader to be used
@@ -47,7 +48,7 @@ fn setup_animations(
     // this sets the fps of the node to 7
     fps_data.push_str("fps: 7,");
     // this sets the node that is used after the fps node
-    fps_data.push_str("then: NodeID(\"0x1\"),");
+    fps_data.push_str("then: NodeId(\"0x1\"),");
     
     // this sets all the frames in order that the index node goes thrue
     index_data.push_str("
@@ -79,11 +80,11 @@ fn setup_animations(
     &fps_data,
     // needed so nodes that need to load assets can do so when they are loaded
     &asset_server).unwrap();
-        
+    let fps = fps_node.id().to_static();
     // or load the nodes directly into the node tree like so
-    let _indexid = nodes.load_node_from_str(&index_data, &asset_server).unwrap();
+    let _indexid = nodes.load_node_from_str(&index_data, &asset_server, &mut assets).unwrap();
     // dont forget to add the nodes to the tree if you manualy loaded them
-    let fps_start = nodes.add_node(fps_node);
+    let fps_start = assets.set(fps_node.id().to_static(), AnimationNode(fps_node));
 
     // spawn SpriteBundle
     commands.spawn((SpriteBundle{
@@ -96,5 +97,5 @@ fn setup_animations(
     // add default AnimationState
     AnimationState::default(),
     // add a startnode to our entity with the fps node as its first node
-    StartNode::from_nodeid(fps_start)));
+    StartNode(fps)));
 }

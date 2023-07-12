@@ -1,8 +1,10 @@
+use std::borrow::Cow;
+
 use bevy::prelude::Handle;
 use bevy::prelude::Image;
 use thiserror::Error;
 
-use crate::prelude::NodeID;
+use crate::prelude::NodeId;
 use crate::prelude::Attribute;
 
 type Location = String;
@@ -16,6 +18,7 @@ pub enum BevySpriteAnimationError {
         node_type: &'static str,
         message: String,
         loc: Location,
+        raw: ron::de::SpannedError,
     },
     #[cfg(feature = "ron")]
     #[error("RonError: {0}")]
@@ -24,7 +27,7 @@ pub enum BevySpriteAnimationError {
     #[error("RonError: {0}")]
     RonDeError(#[from] ron::de::SpannedError),
     #[error("{0} Not Found")]
-    NodeNotFound(NodeID),
+    NodeNotFound(NodeId<'static>),
     #[error("{} Not Found", .0.name_or_id())]
     AttributeNotFound(Attribute),
     #[error("a BincodeError orccored")]
@@ -62,6 +65,24 @@ pub enum BevySpriteAnimationError {
     AssetIo(#[from]bevy::asset::AssetIoError),
     #[error("bytes to string err")]
     StringErr(#[from]std::string::FromUtf8Error),
+    #[error("No extension given; this is probable a bug with Bevy")]
+    NoExtension,
+    #[error("Extension can be converted to str")]
+    ExtensionNotOsString,
+
+    #[cfg(feature = "serialize")]
+    #[error("Error Loading Node: {0}")]
+    LoadError(#[from] LoadError)
+}
+
+#[derive(Debug, Error)]
+pub enum LoadError {
+    #[error("No closing parentheses ')' {file}::{line}::{column}")]
+    NoClosingParentheses {
+        file: Cow<'static, str>,
+        line: usize,
+        column: usize,
+    }
 }
 
 #[macro_export]

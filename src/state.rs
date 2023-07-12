@@ -156,9 +156,9 @@ impl AnimationState {
     }
 }
 
-pub(crate) fn update_delta<Flag: Component>(
+pub(crate) fn update_delta(
     time: Res<Time>,
-    mut states: Query<&mut AnimationState, With<Flag>>,
+    mut states: Query<&mut AnimationState>,
 ){
     for mut state in states.iter_mut() {
         state.set_attribute(Attribute::DELTA, time.delta_seconds());

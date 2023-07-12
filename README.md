@@ -51,10 +51,10 @@ fn add_nodes(
     // by default this is a hash_map's DefaultHasher hash of its name
     node_tree.add_node(node);
 
-    // with a specific NodeID
+    // with a specific NodeId
     // this can be used to have multiple nodes with the same name.
-    // use when loading a node if that node has a NodeID specified
-    node_tree.insert_node(NodeID::from("Node Name"), node);
+    // use when loading a node if that node has a NodeId specified
+    node_tree.insert_node(NodeId::from("Node Name"), node);
     
     // load a node
     // from a file

@@ -1,37 +1,37 @@
 [
-ScriptNode( #id NodeID(0x001E527169B5475656)
-	#fallback NodeID(0x00FADC5C6B7FF01B5F)
-	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeID(0x00519844F358272E11) ),
-ScriptNode( #id NodeID(0x0025AC21264ABCB025)
-	#fallback NodeID(0x00FADC5C6B7FF01B5F)
-	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeID(0x00CB505F244CC96683) ),
-ScriptNode( #id NodeID(0x008EA5288868FD8F3A)
-	#fallback NodeID(0x00FADC5C6B7FF01B5F)
-	if Index(Attack) >= 10 set Attribute(ZombieState) Ron(Idle) return NodeID(0x003F5CC3C082956460) ),
-ScriptNode( #id NodeID(0x006EE62A603E81AD8B)
-	#fallback NodeID(0x00FADC5C6B7FF01B5F)
-	if Index(Fall) >= 5 set Attribute(ZombieState) Ron(LayingF) return NodeID(0x00D4FFC8686B9FE74F) ),
-ScriptNode( #id NodeID(0x009F4BD19B423E940A)
-	#fallback NodeID(0x00FADC5C6B7FF01B5F)
-	if Index(Fall) >= 6 set Attribute(ZombieState) Ron(LayingB) return NodeID(0x0035FC421AADA3D9B8) ),
-NodeID("0x0000000000000001"):MatchNode<zombie::animation::ZState>(
+ScriptNode( #id NodeId(0xD)
+	#fallback NodeId(3)
+	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeId(8) ),
+ScriptNode( #id NodeId(0xC)
+	#fallback NodeId(3)
+	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeId(3) ),
+ScriptNode( #id NodeId(0xB)
+	#fallback NodeId(3)
+	if Index(Attack) >= 10 set Attribute(ZombieState) Ron(Idle) return NodeId(6) ),
+ScriptNode( #id NodeId(0xE)
+	#fallback NodeId(3)
+	if Index(Fall) >= 5 set Attribute(ZombieState) Ron(LayingF) return NodeId(0xD4FFC8686B9FE74F) ),
+ScriptNode( #id NodeId(0x009F4BD19B423E940A)
+	#fallback NodeId(3)
+	if Index(Fall) >= 6 set Attribute(ZombieState) Ron(LayingB) return NodeId(0x35FC421AADA3D9B8) ),
+NodeId::U64(1):MatchNode<zombie::animation::ZState>(
 	name: "Zombie1_SwitchNode",
 	check: AttributeName("ZombieState"),
-	default: ("0xFADC5C6B7FF01B5F"),
+	default: U64(3),
 	pairs: [
-	(LayingF, ("0xD4FFC8686B9FE74F")),
-	(Idle, ("0xFADC5C6B7FF01B5F")),
-	(StandB, ("0x25AC21264ABCB025")),
-	(LayingB, ("0x35FC421AADA3D9B8")),
-	(StandF, ("0x1E527169B5475656")),
-	(FallB, ("0x9F4BD19B423E940A")),
-	(FallF, ("0x6EE62A603E81AD8B")),
-	(Walking, ("0x0000000000000002")),
-	(Attacking, ("0x8EA5288868FD8F3A")),
-	(Running, ("0x523587637DC7A79D")),
-	(Test, ("0x3")),
+	(LayingF, U64(15348206405909735247)),
+	(Idle, U64(3)),
+	(StandB, U64(12)),
+	(LayingB, U64(3890056860491045304)),
+	(StandF, U64(13)),
+	(FallB, U64(9)),
+	(FallF, U64(7)),
+	(Walking, U64(2)),
+	(Attacking, U64(11)),
+	(Running, U64(5)),
+	(Test, U64(3)),
 	],),
-IndexNode(
+NodeId::U64(3):IndexNode(
 	name: "Zombie1_Idle",
 	frames: [
 	Zombie1/Zombie1_00000.png,
@@ -47,7 +47,7 @@ IndexNode(
 	is_loop: true,
 	index: IndexID(256),
 	),
-IndexNode(
+NodeId::U64(4):IndexNode(
 	name: "Zombie1_Walking",
 	frames: [
 	Zombie1/Zombie1_00009.png,
@@ -66,7 +66,7 @@ IndexNode(
 	is_loop: true,
 	index: IndexID(256),
 	),
-IndexNode(
+NodeId::U64(5):IndexNode(
 	name: "Zombie1_Running",
 	frames: [
 	Zombie1/Zombie1_00021.png,
@@ -81,7 +81,7 @@ IndexNode(
 	is_loop: true,
 	index: IndexID(256),
 	),
-IndexNode(
+NodeId::U64(6):IndexNode(
 	name: "Zombie1_Attacking",
 	frames: [
 	Zombie1/Zombie1_00029.png,
@@ -99,7 +99,7 @@ IndexNode(
 	is_loop: true,
 	index: IndexName("Attack"),
 	),
-IndexNode(
+NodeId::U64(7):IndexNode(
 	name: "Zombie1_FallF",
 	frames: [
 	Zombie1/Zombie1_00040.png,
@@ -112,7 +112,7 @@ IndexNode(
 	is_loop: false,
 	index: IndexName("Fall"),
 	),
-IndexNode(
+NodeId::U64(8):IndexNode(
 	name: "Zombie1_StandF",
 	frames: [
 	Zombie1/Zombie1_00046.png,
@@ -126,7 +126,7 @@ IndexNode(
 	is_loop: false,
 	index: IndexName("Stand"),
 	),
-IndexNode(
+NodeId::U64(9):IndexNode(
 	name: "Zombie1_FallB",
 	frames: [
 	Zombie1/Zombie1_00053.png,
@@ -140,7 +140,7 @@ IndexNode(
 	is_loop: false,
 	index: IndexName("Fall"),
 	),
-IndexNode(
+NodeId::U64(10):IndexNode(
 	name: "Zombie1_StandB",
 	frames: [
 	Zombie1/Zombie1_00060.png,
@@ -155,9 +155,9 @@ IndexNode(
 	is_loop: false,
 	index: IndexName("Stand"),
 	),
-NodeID("0x0000000000000002"):ScaleNode(
+NodeId::U64(2):ScaleNode(
 	name: "WalkScale",
-	next: NodeID("0x1700B9C67B93A42F"),
+	next: U64(4),
 	scale: AttributeName("WSpeed"),
 	index: IndexID(256),
 )
