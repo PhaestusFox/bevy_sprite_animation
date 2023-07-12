@@ -20,7 +20,7 @@ mod test{
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
         use bevy::core::TaskPoolOptions;
         TaskPoolOptions::default().create_default_pools();
-        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", false))
+        bevy::asset::AssetServer::new(bevy::asset::FileAssetIo::new("assets", &None))
     }
 }
 
@@ -37,11 +37,11 @@ impl<F: 'static + Send + Sync> Default for SpriteAnimationPlugin<F> {
 impl<F:'static + Send + Sync + Component> Plugin for SpriteAnimationPlugin<F> {
     fn build(&self, app: &mut App) {
         app.insert_resource(AnimationNodeTree::<F>::default());
-        app.add_system(animation_system::<F>.in_set(AnimationSet::Update));
-        app.add_system(state::update_delta::<F>.before(AnimationSet::Update).in_set(AnimationSet::PreUpdate));
-        app.add_system(state::clear_changed.in_base_set(CoreSet::First));
-        app.add_system(state::flip_update.in_set(AnimationSet::PostUpdate).in_base_set(CoreSet::PostUpdate));
-        app.add_system(state::clear_unchanged_temp.in_base_set(CoreSet::Last));
+        app.add_systems(Update, animation_system::<F>.in_set(AnimationSet::Update));
+        app.add_systems(Update, state::update_delta::<F>.before(AnimationSet::Update).in_set(AnimationSet::PreUpdate));
+        app.add_systems(First, state::clear_changed);
+        app.add_systems(PostUpdate, state::flip_update.in_set(AnimationSet::PostUpdate));
+        app.add_systems(Last, state::clear_unchanged_temp);
         #[cfg(feature = "bevy-inspector-egui")]
         bevy_inspector_egui::RegisterInspectable::register_inspectable::<StartNode>(app);
     }

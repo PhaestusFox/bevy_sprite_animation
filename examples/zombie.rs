@@ -13,8 +13,7 @@ mod animation {
 
     impl Plugin for YourAnimationPlugin {
         fn build(&self, app: &mut App) {
-            app.add_system(zombie_state_update.before(AnimationSet::Update));
-            app.add_system(zombie_update_state.after(AnimationSet::Update));
+            app.add_systems(Update, (zombie_state_update.before(AnimationSet::Update), zombie_update_state.after(AnimationSet::Update)));
         }
     }
 
@@ -78,7 +77,7 @@ mod player {
     
     impl Plugin for Player {
         fn build(&self, app: &mut App) {
-            app.add_system(player_animation_update);
+            app.add_systems(Update, player_animation_update);
         }
     }
     
@@ -105,7 +104,7 @@ mod player {
                         animation.set_attribute(Attribute::FLIP_X, false);
                     }
                 },
-                KeyCode::LShift | KeyCode::RShift | KeyCode::Up => {
+                KeyCode::ShiftLeft | KeyCode::ShiftRight | KeyCode::Up => {
                     *zstate = match zstate.as_ref() {
                         ZState::Idle => {ZState::Walking},
                         ZState::Walking => {ZState::Running},
@@ -120,7 +119,7 @@ mod player {
                         ZState::LayingF => {ZState::StandF},
                     }
                 },
-                KeyCode::Down | KeyCode::LControl | KeyCode::RControl => {
+                KeyCode::Down | KeyCode::ControlLeft | KeyCode::ControlRight => {
                     *zstate = match zstate.as_ref() {
                         ZState::Idle => {ZState::FallF},
                         ZState::Walking => {ZState::Idle},
@@ -155,10 +154,10 @@ fn main() {
     .add_plugins(DefaultPlugins.set(ImagePlugin {
         default_sampler: ImageSampler::nearest_descriptor(),
     }))
-    .add_plugin(animation::YourAnimationPlugin)
-    .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
-    .add_startup_system(setup_animations)
-    .add_plugin(player::Player)
+    .add_plugins((animation::YourAnimationPlugin,
+        SpriteAnimationPlugin::<Zombie>::default(),
+        player::Player))
+    .add_systems(Startup ,setup_animations)
     .run()
 }
 

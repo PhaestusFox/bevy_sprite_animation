@@ -12,7 +12,9 @@ This is more or less a copy of **[Aarthificial's Reanimator](https://github.com/
 
 ## Version
 0.3 = Bevy 0.7 avalable as 0.7 branch
-0.3.1 >= Bevy 0.8 avalable as master branch
+0.3.1 = Bevy 0.8 avalable as 0.8 branch
+0.3.1 = Bevy 0.10 avalable as 0.10 branch
+0.3.2 = Bevy 0.11 avalable as master branch
 ## Usage
 
 ### Add `AnimationPlugin<T>` and other systems to app

@@ -7,8 +7,8 @@ fn main() {
     .add_plugins(DefaultPlugins.set(ImagePlugin {
         default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
     }))
-    .add_plugin(SpriteAnimationPlugin::<Zombie>::default())
-    .add_startup_system(setup_animations)
+    .add_plugins(SpriteAnimationPlugin::<Zombie>::default())
+    .add_systems(Startup, setup_animations)
     .run()
 }
 

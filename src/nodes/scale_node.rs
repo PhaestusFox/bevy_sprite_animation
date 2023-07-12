@@ -239,15 +239,14 @@ pub use loader::ScaleNodeLoader;
 
 #[cfg(feature = "serialize")]
 mod loader {
-use crate::{node_core::NodeLoader, prelude::Attribute};
-use std::collections::HashMap;
+use crate::{node_core::NodeLoader};
 use super::ScaleNode;
 
 use crate::prelude::{AnimationNode, BevySpriteAnimationError as Error};
 pub struct  ScaleNodeLoader;
 
 impl NodeLoader for ScaleNodeLoader {
-    fn load(&mut self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
+    fn load(&mut self, data: &str, _: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNode>, Error> {
         Ok(Box::new(ron::from_str::<ScaleNode>(data)?))
     }
 
