@@ -123,7 +123,7 @@ mod loader {
     pub struct FPSNodeLoader;
 
     impl NodeLoader for FPSNodeLoader {
-        fn load(&mut self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
+        fn load(&self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
         let node: FPSNode = ron::from_str(data)?;
         Ok(Box::new(node))
     }

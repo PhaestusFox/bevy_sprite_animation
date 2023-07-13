@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use node_core::NodeLoader;
 use node_core::CanLoad;
 use crate::error::BevySpriteAnimationError as Error;
+use crate::error::LoadError;
 use std::collections::HashMap;
 use crate::prelude::*;
 
@@ -114,14 +115,15 @@ impl StartNode {
 #[derive(Resource)]
 pub struct AnimationNodeTree {
     nodes: Vec<Handle<AnimationNode>>,
+    nodes: HashSet<Handle<AnimationNode>>,
     #[cfg(feature = "serialize")]
-    loaders: HashMap<String, Box<dyn NodeLoader>>,
+    loaders: std::sync::Arc<std::sync::RwLock<HashMap<String, Box<dyn NodeLoader>>>>,
 }
 
 impl Default for AnimationNodeTree {
     fn default() -> AnimationNodeTree {
         AnimationNodeTree {
-            nodes: Vec::new(),
+            nodes: HashSet::new(),
             #[cfg(feature = "serialize")]
             loaders: default_loaders(),
         }
@@ -129,19 +131,19 @@ impl Default for AnimationNodeTree {
 }
 
 #[cfg(feature = "serialize")]
-fn default_loaders() -> HashMap<String, Box<dyn NodeLoader>> {
+fn default_loaders() -> std::sync::Arc<std::sync::RwLock<HashMap<String, Box<dyn NodeLoader>>>> {
     let mut map: HashMap<String, Box<dyn NodeLoader>> = HashMap::new();
     map.insert("IndexNode".to_string(),IndexNode::loader());
     map.insert("FPSNode".to_string(), FPSNode::loader());
     map.insert("ScriptNode".to_string(), ScriptNode::loader());
     map.insert("ScaleNode".to_string(), ScaleNode::loader());
-    map
+    std::sync::Arc::new(std::sync::RwLock::new(map))
 }
 
 impl AnimationNodeTree {
 
     pub fn add_node(&mut self, node: Handle<AnimationNode>) {
-        self.nodes.push(node);
+        self.nodes.insert(node);
     } 
 
     // #[cfg(feature = "serialize")]
@@ -167,8 +169,9 @@ impl AnimationNodeTree {
         }
         let can_load = loader.can_load()[0];
         info!("registoring {} loader", can_load);
-        if self.loaders.contains_key(can_load) {warn!("A loader for {} was alreadey registored", can_load)};
-        self.loaders.insert(can_load.into(), loader);
+        let Ok(mut loaders) = self.loaders.write() else {error!("Failed to add loader {:?}", LoadError::RwLockPoisoned); return;};
+        if loaders.contains_key(can_load) {warn!("A loader for {} was alreadey registored", can_load)};
+        loaders.insert(can_load.into(), loader);
         //this does nothing for now but my become a memory leak in the futer if i make loader extentions point to a shaired loader;
         //this would allow a single loader to share a state between multiple nodes of diffrent types being loaded but my allow a loader
         //to have no type left relying on it because the are all now registored lesswere this becomes an implmentaion issue tho
@@ -193,12 +196,12 @@ impl AnimationNodeTree {
             let nodes = self.load_tree_from_str(&data, asset_server, assets)?;
             info!("loaded {} from {:?}",nodes.len(), path.as_ref());
             for node in nodes {
-                self.nodes.push(node)
+                self.add_node(node)
             }
         } else {
             let node = self.load_node_from_str(&data, asset_server, assets)?;
             info!("loaded 1 from {:?}", path.as_ref());
-            self.nodes.push(node);
+            self.add_node(node);
         }
         Ok(())
     }
@@ -221,10 +224,10 @@ impl AnimationNodeTree {
                 sym.push(char);
             }
             if char == '(' {
-                if sym.starts_with("NodeId::") {
+                if sym.starts_with("Id(") || sym.starts_with("Name(") {
                     ext_to(&mut sym, &mut input, ')')?;
                     println!("Node Id Data: {:?}", &sym);
-                    node_id = Some(ron::from_str(&sym[8..]).unwrap());
+                    node_id = Some(ron::from_str(&sym).unwrap());
                     ext_to(&mut sym, &mut input, ':')?;
                     sym.clear();
                 } else {
@@ -234,13 +237,8 @@ impl AnimationNodeTree {
             }
         }
 
-        println!("Found:\n\tId: {:?}\n\tLoader: {}", node_id, sym);
-
-        if sym.len() < 1 {
-            error!("Loader Seems to short left = {}", &data[input.next_index-1..]);
-        }
-
-        let loader = self.loaders.get_mut(&sym).ok_or(Error::NoLoader(sym))?;
+        let loaders = self.loaders.read().or(Err(LoadError::RwLockPoisoned))?;
+        let loader = loaders.get(&sym).ok_or(Error::NoLoader(sym))?;
         
         let node = match loader.load(&data[input.next_index-1..], asset_server) {
             Ok(ok) => ok,
@@ -277,9 +275,9 @@ impl AnimationNodeTree {
                 sym.push(char);
             }
             if char == '(' {
-                if sym.starts_with("NodeId::") {
+                if sym.starts_with("Id(") || sym.starts_with("Name(") {
                     ext_to(&mut sym, &mut input, ')')?;
-                    id = Some(ron::from_str::<NodeId>(&sym[8..]).map_err(|mut e| {
+                    id = Some(ron::from_str::<NodeId>(&sym).map_err(|mut e| {
                         e.position.line += input.line;
                         e.position.col += input.col;
                         e

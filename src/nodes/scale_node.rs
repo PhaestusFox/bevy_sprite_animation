@@ -245,7 +245,7 @@ use crate::prelude::{AnimationNodeTrait, BevySpriteAnimationError as Error};
 pub struct  ScaleNodeLoader;
 
 impl NodeLoader for ScaleNodeLoader {
-    fn load(&mut self, data: &str, _: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
+    fn load(&self, data: &str, _: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
         Ok(Box::new(ron::from_str::<ScaleNode>(data)?))
     }
 

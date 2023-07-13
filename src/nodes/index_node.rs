@@ -119,7 +119,7 @@ mod test {
         let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
         let mut res = String::new();
         assert!(true_node.serialize(&mut res, &asset_server).is_ok());
-        let mut loader = IndexNodeLoader;
+        let loader = IndexNodeLoader;
         let test_node = loader.load(&res, &asset_server);
         assert!(test_node.is_ok(), "{}", test_node.err().unwrap());
         let test_node = test_node.unwrap();
@@ -261,7 +261,7 @@ use crate::prelude::{AnimationNodeTrait, BevySpriteAnimationError as Error};
 pub struct IndexNodeLoader;
 
 impl NodeLoader for IndexNodeLoader {
-    fn load(&mut self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
+    fn load(&self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
         let data = data.trim();
         let data = if data.starts_with("IndexNode(") {&data[10..]} else {data};
         let mut chars = data.chars().peekable();

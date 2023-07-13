@@ -508,7 +508,7 @@ mod serialize {
     pub struct ScriptNodeLoader;
 
     impl NodeLoader for ScriptNodeLoader {
-        fn load(&mut self, data: &str, _: &AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
+        fn load(&self, data: &str, _: &AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
             let data = data.trim();
             let data = if data.starts_with("ScriptNode(") {
                 if data.ends_with("),") {

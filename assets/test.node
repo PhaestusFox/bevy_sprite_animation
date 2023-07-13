@@ -1,5 +1,5 @@
-NodeId::U64(0000000000000000):FPSNode(
+Id(0):FPSNode(
     name: "ZombieFPS",
     fps: 7,
-    then: U64(1),
+    then: Id(1),
 )

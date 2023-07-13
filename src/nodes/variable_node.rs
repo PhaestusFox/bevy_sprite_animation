@@ -266,7 +266,7 @@ use crate::prelude::{AnimationNodeTrait, BevySpriteAnimationError as Error};
 pub struct  VariableNodeLoader;
 
 impl NodeLoader for VariableNodeLoader {
-    fn load(&mut self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
+    fn load(&self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
         let data = data.trim();
         let data = if data.starts_with("VariableNode(") {&data[13..]} else {data};
         let mut chars = data.chars().peekable();

@@ -158,7 +158,7 @@ mod loader {
     //012345678901234567890123456789012345678901
     //bevy_sprite_animation::nodes::match_node::
     impl<T> NodeLoader for MatchNodeLoader<T> where T:MatchType + std::any::Any + serde::de::DeserializeOwned + serde::Serialize + Ord {
-        fn load(&mut self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
+        fn load(&self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
         use std::collections::HashMap;
         let data = data.trim();
         let data = if data.starts_with(&format!("{}(", self.can_load[0])) {&data[self.can_load[0].len()..].trim()} else {data};

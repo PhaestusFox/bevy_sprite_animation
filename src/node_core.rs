@@ -45,6 +45,6 @@ impl std::fmt::Display for NodeResult{
 }
 
 pub trait NodeLoader: 'static + Send + Sync {
-    fn load(&mut self, data: &str, asset_server: &AssetServer) -> Result<Box<dyn AnimationNodeTrait>, crate::error::BevySpriteAnimationError>;
+    fn load(&self, data: &str, asset_server: &AssetServer) -> Result<Box<dyn AnimationNodeTrait>, crate::error::BevySpriteAnimationError>;
     fn can_load(&self) -> &[&str];
 }

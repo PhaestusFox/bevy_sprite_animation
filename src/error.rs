@@ -72,7 +72,9 @@ pub enum BevySpriteAnimationError {
 
     #[cfg(feature = "serialize")]
     #[error("Error Loading Node: {0}")]
-    LoadError(#[from] LoadError)
+    LoadError(#[from] LoadError),
+
+
 }
 
 #[derive(Debug, Error)]
@@ -82,7 +84,9 @@ pub enum LoadError {
         file: Cow<'static, str>,
         line: usize,
         column: usize,
-    }
+    },
+    #[error("The Loader RwLock is Poisened")]
+    RwLockPoisoned,
 }
 
 #[macro_export]

@@ -174,42 +174,11 @@ use std::{borrow::Cow, hash::Hasher};
 use bevy::reflect::Reflect;
 
 impl std::str::FromStr for NodeId<'_> {
-    type Err = std::num::ParseIntError; //todo!
+    type Err = ron::error::SpannedError; //todo!
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let data = s.trim();
-            let data = if let Some(data) = data.strip_prefix("NodeId(") {
-                if !data.ends_with(')') {
-                    panic!("NodeId: started with 'NodeId(' but did not end with ')'");
-                }
-                NodeId::from_u64(if let Some(data) = data.strip_prefix("0x") {
-                    println!("NodeId::from_str hex: {}", &data[..data.len()-1]);
-                    u64::from_str_radix(&data[..data.len() -1], 16)?
-                } else if let Some(data) = data.strip_prefix("0b") {
-                    println!("NodeId::from_str bin: {}", &data[..data.len()-1]);
-                    u64::from_str_radix(&data[..data.len() -1], 2)?
-                } else {
-                    println!("NodeId::from_str dec: {}", &data[..data.len()-1]);
-                    data[..data.len()-1].parse()?
-                })
-            } else if let Some(data) = data.strip_prefix("NodeName(") {
-                if !data.ends_with(')') {
-                    panic!("NodeName: started with 'NodeName(' but did not end with ')'");
-                }
-                if data.starts_with(|c: char| c.is_numeric()) {
-                    NodeId::Hash(if let Some(data) = data.strip_prefix("0x") {
-                        u64::from_str_radix(&data[..data.len() - 1], 16)?
-                    } else if let Some(data) = data.strip_prefix("0b") {
-                        u64::from_str_radix(&data[..data.len()-1], 2)?
-                    } else {
-                        data[..data.len()-1].parse()?
-                    })
-                } else {
-                    NodeId::Name(String::from(&data[..data.len()-1]).into())
-                }
-            } else {
-                panic!("Must start with Nodexx")
-            };
-            Ok(data)
+            let mut data = s.trim();
+            if let Some(new) = data.strip_prefix("Node::") {data = new;};
+            ron::from_str(data)
     }
 }
 

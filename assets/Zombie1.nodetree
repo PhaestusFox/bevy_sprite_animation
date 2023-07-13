@@ -1,37 +1,37 @@
 [
-ScriptNode( #id NodeId(0xD)
-	#fallback NodeId(3)
-	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeId(8) ),
-ScriptNode( #id NodeId(0xC)
-	#fallback NodeId(3)
-	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return NodeId(3) ),
-ScriptNode( #id NodeId(0xB)
-	#fallback NodeId(3)
-	if Index(Attack) >= 10 set Attribute(ZombieState) Ron(Idle) return NodeId(6) ),
-ScriptNode( #id NodeId(0xE)
-	#fallback NodeId(3)
-	if Index(Fall) >= 5 set Attribute(ZombieState) Ron(LayingF) return NodeId(0xD4FFC8686B9FE74F) ),
-ScriptNode( #id NodeId(0x009F4BD19B423E940A)
-	#fallback NodeId(3)
-	if Index(Fall) >= 6 set Attribute(ZombieState) Ron(LayingB) return NodeId(0x35FC421AADA3D9B8) ),
-NodeId::U64(1):MatchNode<zombie::animation::ZState>(
+ScriptNode( #id Id(13)
+	#fallback Id(3)
+	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return Id(8) ),
+ScriptNode( #id Id(12)
+	#fallback Id(3)
+	if Index(Stand) >= 6 set Attribute(ZombieState) Ron(Idle) return Id(3) ),
+ScriptNode( #id Id(11)
+	#fallback Id(3)
+	if Index(Attack) >= 10 set Attribute(ZombieState) Ron(Idle) return Id(6) ),
+ScriptNode( #id Id(14)
+	#fallback Id(3)
+	if Index(Fall) >= 5 set Attribute(ZombieState) Ron(LayingF) return Id(0xD4FFC8686B9FE74F) ),
+ScriptNode( #id Id(0x009F4BD19B423E940A)
+	#fallback Id(3)
+	if Index(Fall) >= 6 set Attribute(ZombieState) Ron(LayingB) return Id(0x35FC421AADA3D9B8) ),
+Id(1):MatchNode<zombie::animation::ZState>(
 	name: "Zombie1_SwitchNode",
 	check: AttributeName("ZombieState"),
-	default: U64(3),
+	default: Id(3),
 	pairs: [
-	(LayingF, U64(15348206405909735247)),
-	(Idle, U64(3)),
-	(StandB, U64(12)),
-	(LayingB, U64(3890056860491045304)),
-	(StandF, U64(13)),
-	(FallB, U64(9)),
-	(FallF, U64(7)),
-	(Walking, U64(2)),
-	(Attacking, U64(11)),
-	(Running, U64(5)),
-	(Test, U64(3)),
+	(LayingF, Id(15348206405909735247)),
+	(Idle, Id(3)),
+	(StandB, Id(12)),
+	(LayingB, Id(3890056860491045304)),
+	(StandF, Id(13)),
+	(FallB, Id(9)),
+	(FallF, Id(7)),
+	(Walking, Id(2)),
+	(Attacking, Id(11)),
+	(Running, Id(5)),
+	(Test, Id(3)),
 	],),
-NodeId::U64(3):IndexNode(
+Id(3):IndexNode(
 	name: "Zombie1_Idle",
 	frames: [
 	Zombie1/Zombie1_00000.png,
@@ -47,7 +47,7 @@ NodeId::U64(3):IndexNode(
 	is_loop: true,
 	index: IndexID(256),
 	),
-NodeId::U64(4):IndexNode(
+Id(4):IndexNode(
 	name: "Zombie1_Walking",
 	frames: [
 	Zombie1/Zombie1_00009.png,
@@ -66,7 +66,7 @@ NodeId::U64(4):IndexNode(
 	is_loop: true,
 	index: IndexID(256),
 	),
-NodeId::U64(5):IndexNode(
+Id(5):IndexNode(
 	name: "Zombie1_Running",
 	frames: [
 	Zombie1/Zombie1_00021.png,
@@ -81,7 +81,7 @@ NodeId::U64(5):IndexNode(
 	is_loop: true,
 	index: IndexID(256),
 	),
-NodeId::U64(6):IndexNode(
+Id(6):IndexNode(
 	name: "Zombie1_Attacking",
 	frames: [
 	Zombie1/Zombie1_00029.png,
@@ -99,7 +99,7 @@ NodeId::U64(6):IndexNode(
 	is_loop: true,
 	index: IndexName("Attack"),
 	),
-NodeId::U64(7):IndexNode(
+Id(7):IndexNode(
 	name: "Zombie1_FallF",
 	frames: [
 	Zombie1/Zombie1_00040.png,
@@ -112,7 +112,7 @@ NodeId::U64(7):IndexNode(
 	is_loop: false,
 	index: IndexName("Fall"),
 	),
-NodeId::U64(8):IndexNode(
+Id(8):IndexNode(
 	name: "Zombie1_StandF",
 	frames: [
 	Zombie1/Zombie1_00046.png,
@@ -126,7 +126,7 @@ NodeId::U64(8):IndexNode(
 	is_loop: false,
 	index: IndexName("Stand"),
 	),
-NodeId::U64(9):IndexNode(
+Id(9):IndexNode(
 	name: "Zombie1_FallB",
 	frames: [
 	Zombie1/Zombie1_00053.png,
@@ -140,7 +140,7 @@ NodeId::U64(9):IndexNode(
 	is_loop: false,
 	index: IndexName("Fall"),
 	),
-NodeId::U64(10):IndexNode(
+Id(10):IndexNode(
 	name: "Zombie1_StandB",
 	frames: [
 	Zombie1/Zombie1_00060.png,
@@ -155,9 +155,9 @@ NodeId::U64(10):IndexNode(
 	is_loop: false,
 	index: IndexName("Stand"),
 	),
-NodeId::U64(2):ScaleNode(
+Id(2):ScaleNode(
 	name: "WalkScale",
-	next: U64(4),
+	next: Id(4),
 	scale: AttributeName("WSpeed"),
 	index: IndexID(256),
 )
