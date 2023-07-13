@@ -1,5 +1,6 @@
-use bevy::prelude::AssetServer;
+use bevy::{prelude::AssetServer, reflect::Reflect};
 use bevy::log::error;
+use crate::serde::{ReflectLoadNode, LoadNode};
 use crate::{prelude::{NodeId, Attribute, AnimationNodeTrait, NodeResult, BevySpriteAnimationError}, state::AnimationState};
 use std::str::FromStr;
 
@@ -244,9 +245,14 @@ impl ToString for Tag {
     }
 }
 
+#[derive(Reflect)]
+#[reflect(LoadNode)]
 pub struct ScriptNode {
+    #[reflect(ignore)]
     tokens: Vec<Token>,
+    #[reflect(ignore)]
     tags: Vec<Tag>,
+    #[reflect(ignore)]
     fallback: Option<NodeId<'static>>,
 }
 
@@ -528,3 +534,11 @@ mod serialize {
         }
     }
 }
+
+impl LoadNode for ScriptNode {
+    fn load<'b>(s: &str, _: &mut bevy::asset::LoadContext<'b>, _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<crate::AnimationNode, crate::error::LoadError> {
+        Ok(crate::AnimationNode::new(ScriptNode::new(s)))
+    }
+}
+
+

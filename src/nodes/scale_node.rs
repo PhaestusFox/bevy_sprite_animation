@@ -1,7 +1,9 @@
-use crate::node_core::CanLoad;
+use crate::serde::ReflectLoadNode;
+use crate::{node_core::CanLoad, serde::LoadNode};
 use crate::prelude::*;
-use serde::{Serialize, Deserialize};
-use crate::error::BevySpriteAnimationError as Error;
+use bevy::reflect::Reflect;
+use serde::{Serialize, Deserialize, Deserializer};
+use crate::error::{BevySpriteAnimationError as Error, LoadError};
 
 #[cfg(test)]
 mod test {
@@ -116,10 +118,10 @@ mod test {
     // }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Reflect)]
+#[reflect(LoadNode)]
 pub struct ScaleNode{
     name: String,
-    index: Attribute,
     scale: Attribute,
     next: NodeId<'static>,
 }
@@ -146,17 +148,15 @@ impl ScaleNode {
     pub fn new(name: &str, scale: Attribute, next: NodeId<'static>) -> ScaleNode {
         ScaleNode { 
             name: name.to_string(),
-            index: Attribute::INDEX,
             scale,
             next
         }
     }
 
     #[inline(always)]
-    pub fn new_with_index(name: &str, index: Attribute, scale: Attribute, next: NodeId<'static>) -> ScaleNode {
+    pub fn new_with_index(name: &str, scale: Attribute, next: NodeId<'static>) -> ScaleNode {
         ScaleNode { 
             name: name.to_string(),
-            index,
             scale,
             next,
         }
@@ -180,7 +180,6 @@ impl AnimationNodeTrait for ScaleNode {
     }
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
-        let mut index = state.try_get_attribute::<usize>(&self.index).unwrap_or(0);
         let rem_time = state.get_attribute::<f32>(&Attribute::TIME_ON_FRAME);
         let frames = state.get_attribute::<usize>(&Attribute::FRAMES);
         let last = state.get_attribute::<f32>(&Attribute::LAST_FPS);
@@ -189,12 +188,10 @@ impl AnimationNodeTrait for ScaleNode {
         let width = last * scale;
         let frames = (frame_time / width).floor();
         frame_time -= frames * width;
-        index += frames as usize;
 
         state.set_attribute(Attribute::LAST_FPS, last * scale);
         state.set_attribute(Attribute::TIME_ON_FRAME, frame_time);
         state.set_attribute(Attribute::FRAMES, frames as usize);
-        state.set_attribute(self.index, index);
         NodeResult::Next(self.next.to_static())
     }
 
@@ -222,7 +219,6 @@ impl AnimationNodeTrait for ScaleNode {
         use std::hash::Hasher;
         let mut hasher = std::collections::hash_map::DefaultHasher::default();
         self.name.hash(&mut hasher);
-        self.index.hash(&mut hasher);
         self.scale.hash(&mut hasher);
         self.next.hash(&mut hasher);
         hasher.finish()
@@ -253,5 +249,55 @@ impl NodeLoader for ScaleNodeLoader {
         &["ScaleNode"]
     }
 }
+}
 
+impl LoadNode for ScaleNode {
+    fn load<'b>(s: &str, _: &mut bevy::asset::LoadContext<'b>, _: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+        let mut node = ron::de::Deserializer::from_str(s)?;
+        match node.deserialize_struct("ScaleNode", &[], ScaleLoader) {
+            Ok(ok) => Ok(AnimationNode::new(ok)),
+            Err(e) => Err(LoadError::Ron(ron::de::SpannedError{code: e, position: ron::de::Position{line: 0, col: 0}})),
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(field_identifier, rename_all = "lowercase")]
+enum Fileds {
+    Name,
+    Scale,
+    Next,
+}
+
+struct ScaleLoader;
+
+impl<'de> serde::de::Visitor<'de> for ScaleLoader {
+    type Value = ScaleNode;
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("Ron String or a IndexNode")
+    }
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>, {
+        use serde::de::MapAccess;
+        use serde::de::Error;
+            let mut name = None;
+            let mut scale = None;
+            let mut next = None;
+        while let Some(key) = map.next_key::<Fileds>()? {
+            match key {
+                Fileds::Name => name = Some(map.next_value::<String>()?),
+                Fileds::Scale => scale = Some(map.next_value::<Attribute>()?),
+                Fileds::Next => next = Some(map.next_value::<NodeId>()?),
+            }
+        }
+        let Some(scale) = scale else {return Err(Error::missing_field("Scale"));};
+        let Some(name) = name else {return Err(Error::missing_field("Name"));};
+        let Some(next) = next else {return Err(Error::missing_field("Next"));};
+        Ok(ScaleNode {
+            name,
+            scale,
+            next
+        })
+    }
 }

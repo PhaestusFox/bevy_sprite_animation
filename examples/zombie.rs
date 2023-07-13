@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::texture::ImageSampler};
+use bevy::{prelude::*, render::texture::ImageSampler, reflect::DynamicTypePath};
 use bevy_sprite_animation::prelude::*;
 
 use animation::ZState;
@@ -158,6 +158,7 @@ fn main() {
         SpriteAnimationPlugin,
         player::Player))
     .add_systems(Startup ,setup_animations)
+    .register_type::<MatchNode<ZState>>()
     .run()
 }
 
@@ -165,12 +166,18 @@ fn main() {
 #[reflect(Component)]
 struct Zombie;
 
+#[derive(Component)]
+struct Handles(Handle<AnimationNode>, Handle<AnimationNode>);
+
+use bevy::reflect::TypePath;
 fn setup_animations(
     mut commands: Commands,
     mut nodes: ResMut<AnimationNodeTree>,
     asset_server: Res<AssetServer>,
     mut assets: ResMut<Assets<AnimationNode>>,
 ) {
+    let node: MatchNode<ZState> = MatchNode::new("ERROR", vec![(ZState::Attacking, NodeId::U64(1))], Attribute::INDEX, NodeId::U64(0));
+    println!("{}", <MatchNode<ZState> as TypePath>::short_type_path());
 
     let fps_node = FPSNode::new("ZombieFPS", 7, NodeId::from_u64(1));
     println!("\n\n{}\n\n", ron::ser::to_string_pretty(&fps_node, ron::ser::PrettyConfig::default()).unwrap());
@@ -181,9 +188,9 @@ fn setup_animations(
     nodes.registor_node::<MatchNode::<ZState>>();
 
     let mut images = Vec::new();
-    for i in 0..=67 {
-        images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
-    }
+    // for i in 0..=67 {
+    //     images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
+    // }
     let test = assets.set(NodeId::from_u64(0x3), AnimationNode::new(
         bevy_sprite_animation::nodes::IndexNode::new("test", &images, true)
     ));
@@ -194,18 +201,9 @@ fn setup_animations(
     let stand_index = Attribute::new_index("Stand");
     let attack_index = Attribute::new_index("Attack");
 
-    if let Err(e) = nodes.load("test.node", &asset_server, &mut assets) {
-        match e {
-            BevySpriteAnimationError::RonDeError(e) => {
-                println!("\n Error {} @ assets\\test.node:{}:{}\n", e, e.position.line, e.position.col);
-            },
-            e => error!("Test Node: {}", e),
-        }
-    }
+    let test_handle: Handle<AnimationNode> = asset_server.load("test.node");
 
-    if let Err(e) = nodes.load("./Zombie1.nodetree", &asset_server, &mut assets) {
-        error!("Test Tree: {}", e)
-    }
+    let tree_handle: Handle<AnimationNode> = asset_server.load("./Zombie1.nodetree");
 
     let mut start = AnimationState::default();
     start.set_temporary(fall_index);
@@ -220,6 +218,7 @@ fn setup_animations(
     ZState::Attacking,
     start,
     player::Player,
-    StartNode::from_u64(0)
+    StartNode::from_u64(0),
+    Handles(test_handle, tree_handle),
     ));
 }

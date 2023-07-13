@@ -2,28 +2,42 @@ use std::collections::HashMap;
 
 use crate::node_core::CanLoad;
 use crate::prelude::*;
-use crate::error::BevySpriteAnimationError as Error;
+use crate::error::{BevySpriteAnimationError as Error, LoadError};
+use crate::serde::{LoadNode, ReflectLoadNode};
 
+#[cfg(not(feature = "serialize"))]
 pub trait MatchType:'static + Send + Sync + Eq + std::hash::Hash {}
-
+#[cfg(not(feature = "serialize"))]
 impl<T> MatchType for T
 where T:'static + Send + Sync + Eq + std::hash::Hash
 {
     
 }
 
-pub struct MatchNode<T:'static + Send + Sync> {
+#[cfg(feature = "serialize")]
+pub trait MatchType:'static + Send + Sync + Eq + std::hash::Hash + serde::de::DeserializeOwned + serde::Serialize {}
+#[cfg(feature = "serialize")]
+impl<T> MatchType for T
+where T:'static + Send + Sync + Eq + std::hash::Hash + serde::de::DeserializeOwned + serde::Serialize
+{
+    
+}
+
+#[derive(Reflect)]
+#[reflect(LoadNode)]
+pub struct MatchNode<T: MatchType> {
     name: String,
+    #[reflect(ignore)]
     pairs: HashMap<T, NodeId<'static>>,
     check: Attribute,
     default: NodeId<'static>,
 }
 
-impl<T:MatchType + Ord> std::hash::Hash  for MatchNode<T> {
+impl<T:MatchType> std::hash::Hash for MatchNode<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.name.hash(state);
         let mut pairs: Vec<(&T, &NodeId)> = self.pairs.iter().collect();
-        pairs.sort_by(|a,b| { a.0.partial_cmp(b.0).unwrap()});
+        pairs.sort_by(|a,b| { a.1.partial_cmp(b.1).unwrap()});
         for pair in pairs.iter() {
             pair.hash(state);
         }
@@ -50,14 +64,14 @@ impl<T:MatchType> MatchNode<T> {
 }
 
 #[cfg(feature = "serialize")]
-impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned + Ord> CanLoad for MatchNode<T> {
+impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned> CanLoad for MatchNode<T> {
     fn loader() -> Box<dyn NodeLoader> {
         Box::new(MatchNodeLoader::<T>::default())
     }
 }
 
 impl<T> AnimationNodeTrait for MatchNode<T>
-where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any + Ord
+where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any
 {
     fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
 
@@ -122,8 +136,10 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
     }
 }
 
+use bevy::reflect::Reflect;
 #[cfg(feature = "serialize")]
 pub use loader::MatchNodeLoader;
+use ron::error::SpannedError;
 
 #[cfg(feature = "serialize")]
 mod loader {
@@ -157,7 +173,7 @@ mod loader {
     }
     //012345678901234567890123456789012345678901
     //bevy_sprite_animation::nodes::match_node::
-    impl<T> NodeLoader for MatchNodeLoader<T> where T:MatchType + std::any::Any + serde::de::DeserializeOwned + serde::Serialize + Ord {
+    impl<T> NodeLoader for MatchNodeLoader<T> where T:MatchType + std::any::Any + serde::de::DeserializeOwned + serde::Serialize {
         fn load(&self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
         use std::collections::HashMap;
         let data = data.trim();
@@ -225,5 +241,68 @@ mod loader {
         debug_assert!(self.can_load[0].starts_with("MatchNode<"));
         &self.can_load
     }
+    }
+}
+
+#[cfg(feature = "serialize")]
+impl<T: MatchType + serde::de::DeserializeOwned> LoadNode for MatchNode<T> {
+    fn load<'b>(s: &str, _: &mut bevy::asset::LoadContext<'b>, _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+        let data = s.trim();
+        let data = &data[1..data.len()-1];
+        let mut chars = crate::serde::InputIter::new(data);
+        let mut map: HashMap<&str, &str> = HashMap::new();
+        let mut start = 0;
+        let mut len = 0;
+        let mut key = "";
+        let mut is_key = true;
+        if let Some(c) = chars.peek() {if *c == '(' {start += 1; chars.next();}}
+        while let Some(c) = chars.next() {
+            match c {
+                ':' => {if is_key {
+                    key = &data[start..start+len].trim();
+                    start += len + 1;
+                    len = 0;
+                    is_key = false;
+                    }
+                },
+                ',' => if !is_key {
+                    map.insert(key, data[start..start+len].trim());
+                    start += len + 1;
+                    len = 0;
+                    is_key = true;
+                    key = "";
+                }
+                '[' => {
+                    while let Some(c) = chars.next() {
+                        len += 1;
+                        if c == ']' {
+                            len += 1;
+                            break;
+                        }
+                    }
+                }
+                _ => {
+                    len += 1;
+                }
+            }
+        }
+        if len > 0 {
+            map.insert(key, data[start..start+len].trim());
+        }
+        let check = map.get("check").ok_or(LoadError::Ron(SpannedError{code: ron::Error::MissingStructField { field: "Check", outer: Some(std::any::type_name::<Self>().to_string()) }, position: chars.file_position()}))?;
+        let pairs = map.get("pairs").ok_or(LoadError::Ron(SpannedError{code: ron::Error::MissingStructField { field: "Pairs", outer: Some(std::any::type_name::<Self>().to_string()) }, position: chars.file_position()}))?;
+        let default = map.get("default").ok_or(LoadError::Ron(SpannedError{code: ron::Error::MissingStructField { field: "Default", outer: Some(std::any::type_name::<Self>().to_string()) }, position: chars.file_position()}))?;
+        let name = map.get("name").ok_or(LoadError::Ron(SpannedError{code: ron::Error::MissingStructField { field: "Name", outer: Some(std::any::type_name::<Self>().to_string()) }, position: chars.file_position()}))?;
+        let check: Attribute = ron::from_str(check).or_else(|e| Err(LoadError::Ron(e).add_offset(chars.file_position())))?;
+        let pairs: Vec<(T, NodeId)> = ron::from_str(pairs).or_else(|e| Err(LoadError::Ron(e).add_offset(chars.file_position())))?;
+        let default: NodeId = ron::from_str(default).or_else(|e| Err(LoadError::Ron(e).add_offset(chars.file_position())))?;
+        let name = name[1..name.len()-1].to_string();
+        let pairs: HashMap<T, NodeId> = pairs.into_iter().collect();
+        Ok(AnimationNode::new(MatchNode {
+            name,
+            pairs,
+            default,
+            check
+        }))
     }
 }

@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::utils::HashSet;
 use node_core::NodeLoader;
 use node_core::CanLoad;
+use crate::serde::BevyNodeLoader;
 use crate::error::BevySpriteAnimationError as Error;
 use crate::error::LoadError;
 use std::collections::HashMap;
@@ -9,7 +10,7 @@ use crate::prelude::*;
 
 mod error;
 
-//pub mod serde;
+pub mod serde;
 
 pub mod prelude;
 
@@ -34,13 +35,15 @@ pub struct SpriteAnimationPlugin;
 
 impl Plugin for SpriteAnimationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_asset::<AnimationNode>();
-        app.insert_resource(AnimationNodeTree::default());
+        app.add_asset::<AnimationNode>()
+        .init_resource::<AnimationNodeTree>()
+        .add_systems(First, add_nodes_to_assets);
         app.add_systems(Update, animation_system.in_set(AnimationSet::Update));
         app.add_systems(Update, state::update_delta.before(AnimationSet::Update).in_set(AnimationSet::PreUpdate));
         app.add_systems(First, state::clear_changed);
         app.add_systems(PostUpdate, state::flip_update.in_set(AnimationSet::PostUpdate));
         app.add_systems(Last, state::clear_unchanged_temp);
+        nodes::type_registration::registor_nodes(app);
         #[cfg(feature = "bevy-inspector-egui")]
         bevy_inspector_egui::RegisterInspectable::register_inspectable::<StartNode>(app);
     }
@@ -118,14 +121,20 @@ pub struct AnimationNodeTree {
     nodes: HashSet<Handle<AnimationNode>>,
     #[cfg(feature = "serialize")]
     loaders: std::sync::Arc<std::sync::RwLock<HashMap<String, Box<dyn NodeLoader>>>>,
+    #[cfg(feature = "serialize")]
+    receiver: std::sync::Mutex<std::sync::mpsc::Receiver<(NodeId<'static>, AnimationNode)>>,
 }
 
-impl Default for AnimationNodeTree {
-    fn default() -> AnimationNodeTree {
-        AnimationNodeTree {
-            nodes: HashSet::new(),
+impl FromWorld for AnimationNodeTree {
+    fn from_world(world: &mut World) -> Self {
+        let (sender, receiver) = std::sync::mpsc::sync_channel(10);
+        let reg = world.resource::<AppTypeRegistry>().clone();
+        world.resource::<AssetServer>().add_loader(BevyNodeLoader(reg, sender));
+        AnimationNodeTree { nodes: HashSet::default(),
             #[cfg(feature = "serialize")]
             loaders: default_loaders(),
+            #[cfg(feature = "serialize")]
+            receiver: std::sync::Mutex::new(receiver),
         }
     }
 }
@@ -138,6 +147,16 @@ fn default_loaders() -> std::sync::Arc<std::sync::RwLock<HashMap<String, Box<dyn
     map.insert("ScriptNode".to_string(), ScriptNode::loader());
     map.insert("ScaleNode".to_string(), ScaleNode::loader());
     std::sync::Arc::new(std::sync::RwLock::new(map))
+}
+
+#[cfg(feature = "serialize")]
+fn add_nodes_to_assets(
+    mut tree: ResMut<AnimationNodeTree>,
+    mut assets: ResMut<Assets<AnimationNode>>,
+) {
+    for (id, node) in tree.receiver.lock().unwrap().try_iter() {
+        let _ = assets.set(id, node);
+    }
 }
 
 impl AnimationNodeTree {
@@ -179,207 +198,133 @@ impl AnimationNodeTree {
 
     }
 
-    #[cfg(feature = "serialize")]
-    pub fn load<P: AsRef<std::path::Path>>(&mut self, path: P, asset_server: &AssetServer, assets: &mut Assets<AnimationNode>) -> Result<(), Error>{
-        let io = asset_server.asset_io().load_path(path.as_ref());
+    // #[cfg(feature = "serialize")]
+    // pub fn load<P: AsRef<std::path::Path>>(&mut self, path: P, asset_server: &AssetServer, assets: &mut Assets<AnimationNode>) -> Result<(), Error>{
+    //     let io = asset_server.asset_io().load_path(path.as_ref());
         
-        let tree = if let Some(ext) = path.as_ref().extension() {
-            let t = ext == "nodetree";
-            if !(ext == "node" || t) {
-                return Err(Error::InvalidExtension(ext.to_str().unwrap().to_string()));
-            }
-            t
-        } else {false};
-        let data = String::from_utf8(futures_lite::future::block_on(io)?)?;
+    //     let tree = if let Some(ext) = path.as_ref().extension() {
+    //         let t = ext == "nodetree";
+    //         if !(ext == "node" || t) {
+    //             return Err(Error::InvalidExtension(ext.to_str().unwrap().to_string()));
+    //         }
+    //         t
+    //     } else {false};
+    //     let data = String::from_utf8(futures_lite::future::block_on(io)?)?;
 
-        if tree {
-            let nodes = self.load_tree_from_str(&data, asset_server, assets)?;
-            info!("loaded {} from {:?}",nodes.len(), path.as_ref());
-            for node in nodes {
-                self.add_node(node)
-            }
-        } else {
-            let node = self.load_node_from_str(&data, asset_server, assets)?;
-            info!("loaded 1 from {:?}", path.as_ref());
-            self.add_node(node);
-        }
-        Ok(())
-    }
+    //     if tree {
+    //         let nodes = self.load_tree_from_str(&data, asset_server, assets)?;
+    //         info!("loaded {} from {:?}",nodes.len(), path.as_ref());
+    //         for node in nodes {
+    //             self.add_node(node)
+    //         }
+    //     } else {
+    //         let node = self.load_node_from_str(&data, asset_server, assets)?;
+    //         info!("loaded 1 from {:?}", path.as_ref());
+    //         self.add_node(node);
+    //     }
+    //     Ok(())
+    // }
 
-    #[cfg(feature = "serialize")]
-    pub fn load_node_from_str(&mut self, data: &str, asset_server: &AssetServer, assets: &mut Assets<AnimationNode>) -> Result<Handle<AnimationNode>, Error> {
-        let (id, node) = self.load_node(data, asset_server)?;
-        Ok(assets.set(id, AnimationNode(node)))
-    }
+    // #[cfg(feature = "serialize")]
+    // pub fn load_node_from_str(&mut self, data: &str, asset_server: &AssetServer, assets: &mut Assets<AnimationNode>) -> Result<Handle<AnimationNode>, Error> {
+    //     let (id, node) = self.load_node(data, asset_server)?;
+    //     Ok(assets.set(id, AnimationNode(node)))
+    // }
 
-    #[cfg(feature = "serialize")]
-    pub fn load_node(&mut self, data: &str, asset_server: &AssetServer) -> Result<(NodeId, Box<dyn AnimationNodeTrait>), Error> {
-        let mut input = InputIter::new(data);
-        let mut sym = String::new();
-        let mut node_id = None;
-        while let Some(char) = input.next() {
-            if char.is_whitespace() {
-                sym.clear();
-            } else {
-                sym.push(char);
-            }
-            if char == '(' {
-                if sym.starts_with("Id(") || sym.starts_with("Name(") {
-                    ext_to(&mut sym, &mut input, ')')?;
-                    println!("Node Id Data: {:?}", &sym);
-                    node_id = Some(ron::from_str(&sym).unwrap());
-                    ext_to(&mut sym, &mut input, ':')?;
-                    sym.clear();
-                } else {
-                    sym.pop();
-                    break;
-                }
-            }
-        }
+    // #[cfg(feature = "serialize")]
+    // pub fn load_node(&mut self, data: &str, asset_server: &AssetServer) -> Result<(NodeId, Box<dyn AnimationNodeTrait>), Error> {
+    //     let mut input = crate::serde::InputIter::new(data);
+    //     let mut sym = String::new();
+    //     let mut node_id = None;
+    //     while let Some(char) = input.next() {
+    //         if char.is_whitespace() {
+    //             sym.clear();
+    //         } else {
+    //             sym.push(char);
+    //         }
+    //         if char == '(' {
+    //             if sym.starts_with("Id(") || sym.starts_with("Name(") {
+    //                 ext_to(&mut sym, &mut input, ')')?;
+    //                 println!("Node Id Data: {:?}", &sym);
+    //                 node_id = Some(ron::from_str(&sym).unwrap());
+    //                 ext_to(&mut sym, &mut input, ':')?;
+    //                 sym.clear();
+    //             } else {
+    //                 sym.pop();
+    //                 break;
+    //             }
+    //         }
+    //     }
 
-        let loaders = self.loaders.read().or(Err(LoadError::RwLockPoisoned))?;
-        let loader = loaders.get(&sym).ok_or(Error::NoLoader(sym))?;
+    //     let loaders = self.loaders.read().or(Err(LoadError::RwLockPoisoned))?;
+    //     let loader = loaders.get(&sym).ok_or(Error::NoLoader(sym))?;
         
-        let node = match loader.load(&data[input.next_index-1..], asset_server) {
-            Ok(ok) => ok,
-            Err(e) => return Err(match e {
-                Error::RonDeError(mut e) => {e.position.line += input.line;
-                e.position.col += input.col;
-                Error::RonDeError(e)},
-                Error::DeserializeError { node_type, message, loc, mut raw } => {
-                    raw.position.line += input.line;
-                    raw.position.col += input.col;
-                    Error::DeserializeError { node_type, message, loc, raw }
-                },
-                e => {e}
-            }),
-        };
-        let node_id = if node_id.is_some() {node_id.unwrap()} else {node.id().to_static()};
-        Ok((node_id, node))
-    }
+    //     let node = match loader.load(&data[input.next_index-1..], asset_server) {
+    //         Ok(ok) => ok,
+    //         Err(e) => return Err(match e {
+    //             Error::RonDeError(mut e) => {e.position.line += input.line;
+    //             e.position.col += input.col;
+    //             Error::RonDeError(e)},
+    //             Error::DeserializeError { node_type, message, loc, mut raw } => {
+    //                 raw.position.line += input.line;
+    //                 raw.position.col += input.col;
+    //                 Error::DeserializeError { node_type, message, loc, raw }
+    //             },
+    //             e => {e}
+    //         }),
+    //     };
+    //     let node_id = if node_id.is_some() {node_id.unwrap()} else {node.id().to_static()};
+    //     Ok((node_id, node))
+    // }
 
-    #[cfg(feature = "serialize")]
-    pub fn load_tree_from_str(&mut self, data: &str, asset_server: &AssetServer, assets: &mut Assets<AnimationNode>) -> Result<Vec<Handle<AnimationNode>>, Error> {
-        let mut input = InputIter::new(data);
-        let mut sym = String::new();
-        let mut nodes = Vec::new();
-        let mut has_started = false;
-        let mut id = None;
-        while let Some(char) = input.next() {
-            if char.is_whitespace() {
-                sym.clear();
-            } else if !has_started && char.is_ascii_punctuation() {
-                continue;
-            } else {
-                has_started = true;
-                sym.push(char);
-            }
-            if char == '(' {
-                if sym.starts_with("Id(") || sym.starts_with("Name(") {
-                    ext_to(&mut sym, &mut input, ')')?;
-                    id = Some(ron::from_str::<NodeId>(&sym).map_err(|mut e| {
-                        e.position.line += input.line;
-                        e.position.col += input.col;
-                        e
-                    })?);
-                    ext_to(&mut sym, &mut input, ':')?;
-                    sym.clear();
-                } else {
-                    ext_till_close(&mut sym, &mut input, '(', ')')?;
-                    println!("Found Node With Data: {}", sym);
-                    let node = self.load_node(&sym, asset_server)?;
-                    if let Some(id) = id {
-                        nodes.push((id, node.1));
-                    } else {
-                        nodes.push((node.0.to_static(), node.1));
-                    }
-                    sym.clear();
-                    has_started = false;
-                    id = None;
-                }
-            }
-        }
-        let mut ids = Vec::new();
-        for (id, node) in nodes.into_iter() {
-            ids.push(assets.set(id, AnimationNode(node)));
-        }
-        Ok(ids)
-    }
-}
+    // #[cfg(feature = "serialize")]
+    // pub fn load_tree_from_str(&mut self, data: &str, asset_server: &AssetServer, assets: &mut Assets<AnimationNode>) -> Result<Vec<Handle<AnimationNode>>, Error> {
+    //     let mut input = crate::serde::InputIter::new(data);
+    //     let mut sym = String::new();
+    //     let mut nodes = Vec::new();
+    //     let mut has_started = false;
+    //     let mut id = None;
+    //     while let Some(char) = input.next() {
+    //         if char.is_whitespace() {
+    //             sym.clear();
+    //         } else if !has_started && char.is_ascii_punctuation() {
+    //             continue;
+    //         } else {
+    //             has_started = true;
+    //             sym.push(char);
+    //         }
+    //         if char == '(' {
+    //             if sym.starts_with("Id(") || sym.starts_with("Name(") {
+    //                 ext_to(&mut sym, &mut input, ')')?;
+    //                 id = Some(ron::from_str::<NodeId>(&sym).map_err(|mut e| {
+    //                     e.position.line += input.line;
+    //                     e.position.col += input.col;
+    //                     e
+    //                 })?);
+    //                 ext_to(&mut sym, &mut input, ':')?;
+    //                 sym.clear();
+    //             } else {
+    //                 ext_till_close(&mut sym, &mut input, '(', ')')?;
+    //                 println!("Found Node With Data: {}", sym);
+    //                 let node = self.load_node(&sym, asset_server)?;
+    //                 if let Some(id) = id {
+    //                     nodes.push((id, node.1));
+    //                 } else {
+    //                     nodes.push((node.0.to_static(), node.1));
+    //                 }
+    //                 sym.clear();
+    //                 has_started = false;
+    //                 id = None;
+    //             }
+    //         }
+    //     }
+    //     let mut ids = Vec::new();
+    //     for (id, node) in nodes.into_iter() {
+    //         ids.push(assets.set(id, AnimationNode(node)));
+    //     }
+    //     Ok(ids)
+    // }
 
-fn ext_to(
-    word: &mut String,
-    chars: &mut InputIter,
-    target: char,
-) -> Result<(), ron::de::SpannedError> {
-    while let Some(char) = chars.next() {
-        word.push(char);
-        if char == target {
-            return Ok(());
-        }
-    }
-    Err(ron::de::SpannedError{code: ron::Error::Eof, position: chars.file_position()})
-}
-
-fn ext_till_close(
-    word: &mut String,
-    chars: &mut InputIter,
-    open: char,
-    close: char,
-) -> Result<(), ron::de::SpannedError>{
-    let mut depth = 1;
-    while let Some(char) = chars.next() {
-        word.push(char);
-        if char == close {
-            depth -= 1;
-        } else if char == open {
-            depth += 1;
-        }
-        if depth == 0 {
-            return Ok(());
-        }
-    }
-    Err(ron::de::SpannedError{code: ron::Error::Eof, position: chars.file_position()})
-}
-
-struct InputIter<'a>{
-    input: std::str::Chars<'a>,
-    next_index: usize,
-    line: usize,
-    col: usize
-}
-
-impl<'a> InputIter<'a> {
-    fn new(s: &'a str) -> InputIter {
-        Self{
-            
-            input: s.chars(),
-            next_index: 0,
-            line: 0,
-            col: 0,
-        }
-    }
-
-    fn file_position(&self) -> ron::de::Position {
-        ron::de::Position{line: self.line + 1, col: self.col + 1}
-    }
-}
-
-impl Iterator for InputIter<'_> {
-    type Item = char;
-    fn next(&mut self) -> Option<Self::Item> {
-        if let Some(next) = self.input.next() {
-            self.next_index += 1;
-            self.col += 1;
-            if next == '\n' {
-                self.col = 0;
-                self.line += 1;
-            }
-            Some(next)
-        } else {
-            None
-        }
-    }
 }
 
 fn animation_system(

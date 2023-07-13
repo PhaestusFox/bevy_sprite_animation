@@ -5,6 +5,42 @@ pub enum NodeId<'a> {
     Hash(u64),
 }
 
+impl PartialOrd for NodeId<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        match self {
+            NodeId::Name(id) => match other{
+                NodeId::Name(other) => Some(id.cmp(other)),
+                NodeId::U64(_) |
+                NodeId::Hash(_) => Some(std::cmp::Ordering::Less),
+            },
+            NodeId::U64(id) |
+            NodeId::Hash(id) => match other {
+                NodeId::Name(_) => Some(std::cmp::Ordering::Greater),
+                NodeId::U64(other) |
+                NodeId::Hash(other) => Some(id.cmp(other)),
+            },
+        }
+    }
+}
+
+impl Ord for NodeId<'_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self {
+            NodeId::Name(id) => match other{
+                NodeId::Name(other) => id.cmp(other),
+                NodeId::U64(_) |
+                NodeId::Hash(_) => std::cmp::Ordering::Less,
+            },
+            NodeId::U64(id) |
+            NodeId::Hash(id) => match other {
+                NodeId::Name(_) => std::cmp::Ordering::Greater,
+                NodeId::U64(other) |
+                NodeId::Hash(other) => id.cmp(other),
+            },
+        }
+    }
+}
+
 impl<'de> serde::Deserialize<'de> for NodeId<'static> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where

@@ -1,17 +1,25 @@
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 use bevy::reflect::ReflectSerialize;
+use bevy::reflect::TypePath;
 use crate::error::BevySpriteAnimationError as Error;
-
+use crate::serde::ReflectLoadNode;
 use crate::node_core::CanLoad;
 use crate::prelude::*;
 
 #[derive(serde::Serialize, serde::Deserialize, Reflect)]
-#[reflect(Serialize, Deserialize)]
+#[reflect(Serialize, Deserialize, LoadNode)]
 pub struct FPSNode {
     name: String,
     fps: u32,
     then: NodeId<'static>,
+}
+
+impl crate::serde::LoadNode for FPSNode {
+    fn load<'b>(s: &str, _load_context: &mut bevy::asset::LoadContext<'b>, _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+        let node = ron::from_str::<FPSNode>(s)?;
+        Ok(AnimationNode::new(node))
+    }
 }
 
 #[cfg(feature = "bevy-inspector-egui")]

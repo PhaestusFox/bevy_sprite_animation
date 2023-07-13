@@ -1,8 +1,13 @@
+use crate::error::LoadError;
 use crate::node_core::CanLoad;
 use crate::prelude::*;
+use crate::serde::LoadNode;
+use crate::serde::ReflectLoadNode;
+use bevy::asset::AssetPath;
 use bevy::prelude::Handle;
 use bevy::prelude::Image;
 use bevy::reflect::Reflect;
+use serde::Deserializer;
 use crate::error::BevySpriteAnimationError as Error;
 
 #[cfg(test)]
@@ -128,6 +133,7 @@ mod test {
 }
 
 #[derive(Debug, Reflect, std::hash::Hash)]
+#[reflect(LoadNode)]
 pub struct IndexNode{
     name: String,
     frames: Vec<Handle<Image>>,
@@ -355,4 +361,63 @@ impl NodeLoader for IndexNodeLoader {
     }
 }
 
+}
+
+impl LoadNode for IndexNode {
+    fn load<'b>(s: &str, load_context: &mut bevy::asset::LoadContext<'b>, dependencies: &mut Vec<AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+        let mut node = ron::de::Deserializer::from_str(s)?;
+        match node.deserialize_struct("IndexNode", &[], IndexLoader(load_context, dependencies)) {
+            Ok(ok) => Ok(AnimationNode::new(ok)),
+            Err(e) => Err(LoadError::Ron(ron::de::SpannedError{code: e, position: ron::de::Position{line: 0, col: 0}})),
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(field_identifier, rename_all = "lowercase")]
+enum Fileds {
+    Name,
+    Frames,
+    IsLoop,
+    Index,
+}
+
+struct IndexLoader<'de, 'b: 'de>(&'de mut bevy::asset::LoadContext<'b>, &'de mut Vec<AssetPath<'static>>);
+
+impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
+    type Value = IndexNode;
+    fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        formatter.write_str("Ron String or a IndexNode")
+    }
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+        where
+            A: serde::de::MapAccess<'de>, {
+        use serde::de::MapAccess;
+        use serde::de::Error;
+            let mut name = None;
+            let mut frames = None;
+            let mut is_loop = false;
+            let mut index = Attribute::INDEX;
+        while let Some(key) = map.next_key::<Fileds>()? {
+            match key {
+                Fileds::Name => name = Some(map.next_value::<String>()?),
+                Fileds::Frames => frames = Some(map.next_value::<Vec<String>>()?),
+                Fileds::IsLoop => is_loop = map.next_value::<bool>()?,
+                Fileds::Index => index = map.next_value::<Attribute>()?,
+            }
+        }
+        let Some(frames) = frames else {return Err(Error::missing_field("Frames"));};
+        let Some(name) = name else {return Err(Error::missing_field("Name"));};
+        let mut handles = Vec::with_capacity(frames.len());
+        for frame in frames {
+            handles.push(self.0.get_handle::<_, Image>(&frame));
+            self.1.push(frame.into());
+        }
+        Ok(IndexNode {
+            frames: handles,
+            name,
+            is_loop,
+            index
+        })
+    }
 }
