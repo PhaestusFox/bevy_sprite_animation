@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::utils::HashSet;
 use node_core::NodeLoader;
 use node_core::CanLoad;
 use crate::error::BevySpriteAnimationError as Error;
@@ -114,7 +115,6 @@ impl StartNode {
 
 #[derive(Resource)]
 pub struct AnimationNodeTree {
-    nodes: Vec<Handle<AnimationNode>>,
     nodes: HashSet<Handle<AnimationNode>>,
     #[cfg(feature = "serialize")]
     loaders: std::sync::Arc<std::sync::RwLock<HashMap<String, Box<dyn NodeLoader>>>>,
