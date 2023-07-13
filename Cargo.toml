@@ -15,6 +15,7 @@ thiserror = "1"
 lazy_static = "1.4.0"
 futures-lite = "1"
 uuid = "*"
+strum_macros = "*"
 
 [features]
 default = ["serialize", "hash"]
