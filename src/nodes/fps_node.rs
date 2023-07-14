@@ -72,14 +72,14 @@ impl AnimationNodeTrait for FPSNode {
     }
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
-        let delta = state.get_attribute::<f32>(&Attribute::DELTA);
-        let rem_time = state.try_get_attribute_or_error::<f32>(&Attribute::TIME_ON_FRAME).unwrap_or(0.);
+        let delta = state.attribute::<f32>(&Attribute::Delta);
+        let rem_time = state.get_attribute::<f32>(&Attribute::TimeThisFrame).cloned().unwrap_or(0.);
         let time = delta + rem_time;
         let frames = (time / self.frame_time()).floor();
         let rem_time = time - self.frame_time() * frames;
-        state.set_attribute(Attribute::FRAMES, frames as usize);
-        state.set_attribute(Attribute::TIME_ON_FRAME, rem_time);
-        state.set_attribute(Attribute::LAST_FPS, self.frame_time());
+        state.set_attribute(Attribute::Frames, frames as usize);
+        state.set_attribute(Attribute::TimeThisFrame, rem_time);
+        state.set_attribute(Attribute::LastFPS, self.frame_time());
         NodeResult::Next(self.then.to_static())
     }
 

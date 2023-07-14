@@ -16,7 +16,7 @@ ScriptNode( #id Id(0x009F4BD19B423E940A)
 	if Index(Fall) >= 6 set Attribute(ZombieState) Ron(LayingB) return Id(0x35FC421AADA3D9B8) ),
 Id(1):MatchNode<ZState>(
 	name: "Zombie1_SwitchNode",
-	check: AttributeName("ZombieState"),
+	check: Custom("ZombieState"),
 	default: Id(3),
 	pairs: [
 	(LayingF, Id(15348206405909735247)),
@@ -45,7 +45,7 @@ Id(3):IndexNode(
 	"Zombie1/Zombie1_00008.png",
 	],
 	isloop: true,
-	index: IndexID(256),
+	index: IndexId(256),
 	),
 Id(4):IndexNode(
 	name: "Zombie1_Walking",
@@ -64,7 +64,7 @@ Id(4):IndexNode(
 	"Zombie1/Zombie1_00020.png",
 	],
 	isloop: true,
-	index: IndexID(256),
+	index: IndexId(256),
 	),
 Id(5):IndexNode(
 	name: "Zombie1_Running",
@@ -79,7 +79,7 @@ Id(5):IndexNode(
 	"Zombie1/Zombie1_00028.png",
 	],
 	isloop: true,
-	index: IndexID(256),
+	index: IndexId(256),
 	),
 Id(6):VariableNode(
 	name: "Zombie1_Attacking",
@@ -97,7 +97,7 @@ Id(6):VariableNode(
 	("Zombie1/Zombie1_00039.png", 0.025),
 	],
 	isloop: true,
-	index: IndexName("Attack"),
+	index: Index("Attack"),
 	),
 Id(7):IndexNode(
 	name: "Zombie1_FallF",
@@ -110,7 +110,7 @@ Id(7):IndexNode(
 	"Zombie1/Zombie1_00045.png",
 	],
 	isloop: false,
-	index: IndexName("Fall"),
+	index: Index("Fall"),
 	),
 Id(8):IndexNode(
 	name: "Zombie1_StandF",
@@ -124,7 +124,7 @@ Id(8):IndexNode(
 	"Zombie1/Zombie1_00052.png",
 	],
 	isloop: false,
-	index: IndexName("Stand"),
+	index: Index("Stand"),
 	),
 Id(9):IndexNode(
 	name: "Zombie1_FallB",
@@ -138,7 +138,7 @@ Id(9):IndexNode(
 	"Zombie1/Zombie1_00059.png",
 	],
 	isloop: false,
-	index: IndexName("Fall"),
+	index: Index("Fall"),
 	),
 Id(10):IndexNode(
 	name: "Zombie1_StandB",
@@ -153,12 +153,12 @@ Id(10):IndexNode(
 	"Zombie1/Zombie1_00067.png",
 	],
 	isloop: false,
-	index: IndexName("Stand"),
+	index: Index("Stand"),
 	),
 Id(2):ScaleNode(
 	name: "WalkScale",
 	next: Id(4),
-	scale: AttributeName("WSpeed"),
-	index: IndexID(256),
+	scale: Custom("WSpeed"),
+	index: IndexId(256),
 )
 ]

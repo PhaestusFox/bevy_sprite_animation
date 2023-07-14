@@ -75,7 +75,7 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
 {
     fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
 
-        let val = match state.try_get_attribute_or_error::<T>(&self.check) {
+        let val = match state.get_attribute::<T>(&self.check) {
             Ok(x) => x,
             Err(e) => return NodeResult::Error(format!("{}",e)),
         };

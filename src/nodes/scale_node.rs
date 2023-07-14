@@ -180,18 +180,18 @@ impl AnimationNodeTrait for ScaleNode {
     }
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
-        let rem_time = state.get_attribute::<f32>(&Attribute::TIME_ON_FRAME);
-        let frames = state.get_attribute::<usize>(&Attribute::FRAMES);
-        let last = state.get_attribute::<f32>(&Attribute::LAST_FPS);
-        let scale = state.try_get_attribute::<f32>(&self.scale).unwrap_or(1.);
+        let rem_time = state.attribute::<f32>(&Attribute::TimeThisFrame);
+        let frames = *state.attribute::<usize>(&Attribute::Frames);
+        let last = state.attribute::<f32>(&Attribute::LastFPS);
+        let scale = state.get_attribute::<f32>(&self.scale).cloned().unwrap_or(1.);
         let mut frame_time = last * frames as f32 + rem_time;
         let width = last * scale;
         let frames = (frame_time / width).floor();
         frame_time -= frames * width;
 
-        state.set_attribute(Attribute::LAST_FPS, last * scale);
-        state.set_attribute(Attribute::TIME_ON_FRAME, frame_time);
-        state.set_attribute(Attribute::FRAMES, frames as usize);
+        state.set_attribute(Attribute::LastFPS, last * scale);
+        state.set_attribute(Attribute::TimeThisFrame, frame_time);
+        state.set_attribute(Attribute::Frames, frames as usize);
         NodeResult::Next(self.next.to_static())
     }
 

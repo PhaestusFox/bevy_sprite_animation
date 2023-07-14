@@ -165,7 +165,7 @@ impl IndexNode {
             name: name.to_string(),
             frames: frames.to_vec(),
             is_loop,
-            index: Attribute::INDEX,
+            index: Attribute::IndexId(0),
         }
     }
 
@@ -198,8 +198,8 @@ impl AnimationNodeTrait for IndexNode {
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
         assert!(self.frames.len() != 0);
-        let mut index = state.try_get_attribute::<usize>(&self.index).unwrap_or(0);
-        let frames = state.get_attribute::<usize>(&Attribute::FRAMES);
+        let mut index = state.index(&self.index);
+        let frames = state.attribute::<usize>(&Attribute::Frames);
         index += frames;
         if index >= self.frames.len() {
             if self.is_loop {
@@ -208,7 +208,7 @@ impl AnimationNodeTrait for IndexNode {
                 index = self.frames.len() - 1;
             }
         }
-        state.set_attribute(self.index, index);
+        state.set_attribute(self.index.clone(), index);
         NodeResult::Done(self.frames[index].clone())
     }
 
@@ -330,7 +330,7 @@ impl NodeLoader for IndexNodeLoader {
 
         let index = match map.get("index") {
             Some(v) => {ron::from_str(v)?},
-            None => {Attribute::INDEX}
+            None => {Attribute::IndexId(0)}
         };
         
         let is_loop = match map.get("is_loop") {
@@ -397,7 +397,7 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
             let mut name = None;
             let mut frames = None;
             let mut is_loop = false;
-            let mut index = Attribute::INDEX;
+            let mut index = Attribute::IndexId(0);
         while let Some(key) = map.next_key::<Fileds>()? {
             match key {
                 Fileds::Name => name = Some(map.next_value::<String>()?),

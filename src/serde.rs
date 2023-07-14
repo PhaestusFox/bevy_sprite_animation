@@ -1,9 +1,43 @@
 use bevy::asset::{LoadedAsset, AssetPath};
 use bevy::{prelude::*, asset::AssetLoader};
-use ron::error::Position;
 use crate::error::LoadError;
 use crate::error::BevySpriteAnimationError as Error;
 use crate::prelude::*;
+
+pub struct AnimationNodeSerdePlugin;
+
+impl Plugin for AnimationNodeSerdePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(First, add_nodes_to_assets)
+        .init_non_send_resource::<NodeWorldChannel>();
+    }
+}
+
+fn add_nodes_to_assets(
+    node_channel: NonSend<NodeWorldChannel>,
+    mut nodes: ResMut<Assets<AnimationNode>>,
+) {
+    for (id, node) in node_channel.receiver.try_iter() {
+        //the refrence node should have a strong handle
+        let _ = nodes.set(id, node);
+    }
+}
+
+struct NodeWorldChannel {
+    receiver: std::sync::mpsc::Receiver<(NodeId<'static>, AnimationNode)>,
+}
+
+impl FromWorld for NodeWorldChannel {
+    fn from_world(world: &mut World) -> Self {
+        let (sender, receiver) = std::sync::mpsc::sync_channel(10);
+        let reg = world.resource::<AppTypeRegistry>().clone();
+        world.resource::<AssetServer>().add_loader(BevyNodeLoader(reg, sender));
+        NodeWorldChannel {
+            receiver,
+        }
+    }
+}
+
 pub(crate) struct BevyNodeLoader(pub AppTypeRegistry, pub std::sync::mpsc::SyncSender<(NodeId<'static>, AnimationNode)>);
 
 impl AssetLoader for BevyNodeLoader {
@@ -82,7 +116,35 @@ impl<T: Reflect + LoadNode> bevy::reflect::FromType<T> for ReflectLoadNode {
 }
 
 pub trait LoadNode {
-    fn load<'b>(s: &str, load_context: &mut bevy::asset::LoadContext<'b>, dependencies: &mut Vec<AssetPath<'static>> ) -> Result<AnimationNode, LoadError>;
+    /// The Method used to load the node from a string
+    /// # Arguments
+    /// * `s` - this is the &str you have to load your node from. it will start `(` and end `)` and total `(` == total `)`
+    /// * 'ctx' - This gives you access to the `LoadContext`<br>
+    /// **Use to**
+    /// * make strong handles
+    /// * add labeled sub assets
+    /// * add labeled sub nodes<br>
+    /// **Dont use to**
+    /// * set the default asset
+    /// * set your primary node with a lable<br>
+    /// **Your primary node must be returned as `Ok((id, node))`**<br>
+    /// **Do not add your primary node to the context**
+    /// * `dependencies` - this is where you can add `AssetPath` dependencies for you node<br>
+    /// use this if you have things like paths to images
+    /// 
+    /// # Examples
+    /// ```no_run
+    /// fn load<'b>(
+    ///     s: &str,
+    ///     _load_context: &mut bevy::asset::LoadContext<'b>,
+    ///     _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>
+    /// ) -> Result<AnimationNode, LoadError> {
+    ///     let node = ron::from_str::<FPSNode>(s)?;
+    ///     Ok(AnimationNode::new(node))
+    /// }
+    /// ```
+    /// see the [IndexNode] for an example of loading images as part of a node
+    fn load<'b>(s: &str, ctx: &mut bevy::asset::LoadContext<'b>, dependencies: &mut Vec<AssetPath<'static>> ) -> Result<AnimationNode, LoadError>;
 }
 
 #[derive(Clone)]

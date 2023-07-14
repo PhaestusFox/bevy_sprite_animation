@@ -1,19 +1,18 @@
 use super::prelude::*;
 use super::error::BevySpriteAnimationError as Error;
-
+use bevy::utils::{HashMap, HashSet};
 use serde::{Serialize, de::DeserializeOwned};
 
 use bevy::prelude::*;
+use thiserror::Error;
 
-use std::collections::{HashMap, HashSet};
+use std::any::{TypeId, Any};
 
 #[derive(Component)]
 pub struct AnimationState {
-    data: HashMap<Attribute,Vec<u8>>,
+    data: HashMap<Attribute, Box<dyn Any + Send + Sync>>,
     pub(crate) changed: HashSet<Attribute>,
     pub(crate) temp: HashSet<Attribute>,
-    #[cfg(feature = "ron")]
-    data_type: HashMap<Attribute, Box<fn(&mut Self, key: Attribute, val: &str) -> Result<(), Error>>>
 }
 
 impl std::fmt::Debug for AnimationState {
@@ -28,17 +27,22 @@ impl std::fmt::Debug for AnimationState {
 
 impl Default for AnimationState {
     fn default() -> Self {
-        let mut data = HashMap::default();
-        data.insert(Attribute::DELTA,  bincode::serialize(&0.0f32).unwrap());
-        data.insert(Attribute::FRAMES, bincode::serialize(&0usize).unwrap());
-        data.insert(Attribute::FLIP_X, bincode::serialize(&false).unwrap());
-        data.insert(Attribute::FLIP_Y, bincode::serialize(&false).unwrap());
-        #[cfg(not(feature = "ron"))]
+        let mut data: HashMap<Attribute, Box<dyn Any + Send + Sync>> = HashMap::default();
+        data.insert(Attribute::Delta,  Box::new(0.0f32));
+        data.insert(Attribute::Frames, Box::new(0));
+        data.insert(Attribute::FlipX, Box::new(false));
+        data.insert(Attribute::FlipY, Box::new(false));
         let s = Self { data, changed: HashSet::new(), temp: HashSet::new()};
-        #[cfg(feature = "ron")]
-        let s = Self { data, changed: HashSet::new(), temp: HashSet::new(), data_type: HashMap::new()};
         s
     }
+}
+
+#[derive(Debug, Error)]
+pub enum StateError {
+    #[error("Attribute not in state")]
+    NotFound,
+    #[error("Attribute has a diffrent type")]
+    WrongType,
 }
 
 impl AnimationState {
@@ -46,102 +50,40 @@ impl AnimationState {
     /// or `D` is the wrong type
     /// use try_get_attribute() if you are unsure if the attribute exists
     #[inline(always)]
-    pub fn get_attribute<D: DeserializeOwned>(&self, key: &Attribute) -> D {
-        self.try_get_attribute(key).expect(&format!("Attribute {} Exists", key))
+    pub fn attribute<D: 'static>(&self, key: &Attribute) -> &D {
+        self.get_attribute(key).expect(&format!("get Attribute {} failed", key))
     }
 
-    /// will return an `option<D>` attribute panics if `D` is the wrong type
+    /// will return an `Result<D, StateError>`
+    /// # Errors 
+    /// * WrongType - the type used to get is not the same as the one used to set
+    /// * NotFound - there is no data set for the Attribute
     #[inline(always)]
-    pub fn try_get_attribute<D: DeserializeOwned>(&self, key: &Attribute) -> Option<D> {
-        match self.try_get_attribute_or_error(key) {
-            Ok(res) => Some(res),
-            Err(e) => match e {
-                BevySpriteAnimationError::AttributeNotFound(_) => None,
-                BevySpriteAnimationError::BincodeError(e) => panic!("Attribute could not be deserialised: {}", e),
-                _ => panic!("How did you get this error; please file bug report"),
-            }
-        }
-    }
-
-    pub(crate) fn try_get_attribute_or_error<D: DeserializeOwned>(&self, key: &Attribute) -> Result<D, Error> {
-        match self.data.get(key) {
-            Some(att) => {Ok(bincode::deserialize(att)?)},
-            None => Err(Error::AttributeNotFound(key.clone()))
-        }
-    }
-
-    #[inline]
-    pub fn get_attribute_raw(&self, key: &Attribute) -> &Vec<u8> {
-        self.try_get_attribute_raw(key).expect(&format!("Attribute {} Exists", key))
-    }
-
-    #[inline]
-    pub fn try_get_attribute_raw(&self, key: &Attribute) -> Option<&Vec<u8>> {
-        self.data.get(key)
-    }
-
-    #[inline]
-    pub fn get_attribute_raw_mut(&mut self, key: &Attribute) -> &mut Vec<u8> {
-        self.try_get_attribute_raw_mut(key).expect(&format!("Attribute {} Exists", key))
-    }
-
-    #[inline]
-    pub fn try_get_attribute_raw_mut(&mut self, key: &Attribute) -> Option<&mut Vec<u8>> {
-        self.data.get_mut(key)
-    }
-
-    #[cfg(feature = "ron")]
-    pub fn set_attribute<D: Serialize + DeserializeOwned>(&mut self, key: Attribute, val: D) {
-        match bincode::serialize(&val) {
-            Ok(v) => {
-                //todo make return something
-                self.change(key);
-                self.data.insert(key, v);
-                self.data_type.insert(key, Box::new(Self::insert_test::<D>));
-            },
-            Err(e) => {error!("Failed to serialize {:?}:{}",key, e);}
-        }
-    }
-
-    #[cfg(feature = "ron")]
-    fn insert_test<D: Serialize + DeserializeOwned>(&mut self, key: Attribute, val: &str) -> Result<(), Error> {
-        match ron::from_str::<D>(val) {
-            Ok(v) => {self.set_attribute(key, v); Ok(())},
-            Err(e) => Err(Error::RonDeError(e)),
-        }
-    }
-
-    #[cfg(not(feature = "ron"))]
-    pub fn set_attribute<D: Serialize>(&mut self, key: Attribute, val: D) {
-        match bincode::serialize(&val) {
-            Ok(v) => {
-                //todo make return something
-                self.change(key);
-                self.data.insert(key, v);
-            },
-            Err(e) => {error!("Failed to serialize {:?}:{}",key, e);}
-        }
-    }
-    
-    #[cfg(feature = "ron")]
-    #[inline(always)]
-    pub fn set_attribute_from_ron(&mut self, key: Attribute, val: &str) -> Result<(), Error> {
-        let id = if let Some(id) = self.data_type.get(&key) {
-            id.clone()
+    pub fn get_attribute<D: 'static>(&self, key: &Attribute) -> Result<&D, StateError> {
+        if let Some(data) = self.data.get(key) {
+            data.downcast_ref::<D>().ok_or(StateError::WrongType)
         } else {
-            return Err(Error::NoTypeId(key));
-        };
-        id(self, key, val)
+            Err(StateError::NotFound)
+        }
     }
 
+    /// sets an Attribute to a specific type and val
+    pub fn set_attribute<D: Any + Send + Sync>(&mut self, key: Attribute, val: D) {
+        self.change(key.clone());
+        self.data.insert(key, Box::new(val));
+    }
+
+    /// Will stop this Attribute being cleared after a frame it is not set
     pub fn set_persistent(&mut self, temp: &Attribute) -> bool {
         self.temp.remove(temp)
     }
 
+    /// Will clear this Attribute if it is not set each frame
     pub fn set_temporary(&mut self, temp: Attribute) -> bool {
         self.temp.insert(temp)
     }
 
+    /// retrun a bool based on if the Attribute has changed this frame
     pub fn changed(&self, attribute: &Attribute) -> bool {
         self.changed.contains(attribute)
     }
@@ -151,8 +93,22 @@ impl AnimationState {
         self.changed.insert(attribute);
     }
 
+    /// removes the data from an Attribute and forgets its type
     pub fn clear_attribute(&mut self, attribute: &Attribute) {
         self.data.remove(attribute);
+    }
+
+    /// get the usize for an index panics if given something other then Index or IndexId
+    /// return 0 if index does not exist or is wrong type
+    pub fn index(&self, index: &Attribute) -> usize {
+        self.get_index(index).expect("Attribute to be Index or IndexId")
+    }
+
+    /// try get the usize for an index return None if given something other then Index or IndexId
+    /// return 0 if index does not exist or is wrong type
+    pub fn get_index(&self, index: &Attribute) -> Option<usize> {
+        if !index.is_index() {return None;}
+        Some(self.get_attribute::<usize>(index).cloned().unwrap_or_default())
     }
 }
 
@@ -161,7 +117,7 @@ pub(crate) fn update_delta(
     mut states: Query<&mut AnimationState>,
 ){
     for mut state in states.iter_mut() {
-        state.set_attribute(Attribute::DELTA, time.delta_seconds());
+        state.set_attribute(Attribute::Delta, time.delta_seconds());
     }
 }
 
@@ -173,7 +129,7 @@ pub(crate) fn clear_unchanged_temp(
         let mut to_clear = Vec::with_capacity(state.temp.len());
         for temp in state.temp.iter() {
             if !state.changed(temp) {
-                to_clear.push(*temp);
+                to_clear.push(temp.clone());
             }
         }
         for clear in to_clear.iter() {
@@ -194,7 +150,7 @@ pub(crate) fn flip_update(
     mut sprites: Query<(&AnimationState, &mut Sprite)>,
 ){
     for (state, mut sprite) in sprites.iter_mut() {
-        sprite.flip_x = state.get_attribute(&Attribute::FLIP_X);
-        sprite.flip_y = state.get_attribute(&Attribute::FLIP_Y);
+        sprite.flip_x = *state.attribute(&Attribute::FlipX);
+        sprite.flip_y = *state.attribute(&Attribute::FlipY);
     }
 }

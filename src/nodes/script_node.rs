@@ -39,7 +39,6 @@ impl AnimationNodeTrait for ScriptNode {
                 }
                 Token::Set => {
                     let key = match self.tokens[index + 1] {
-                        Token::Index(i) => i,
                         Token::Attribute(i) => i,
                         _ => {panic!("unimplemented `set {:?}`", self.tokens[index + 1])}
                     };
@@ -182,7 +181,6 @@ enum Token {
     GratterThenEq,
     Set,
     Attribute(Attribute),
-    Index(Attribute),
     NodeId(NodeId<'static>),
     OpenParen(u8),
     CloseParen(u8),
@@ -328,7 +326,7 @@ impl ScriptNode {
                         name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
                     }
                     name.pop();
-                    tokens.push(Token::Attribute(Attribute::new_index(&name)));
+                    tokens.push(Token::Attribute(Attribute::new_index(name.to_string())));
                 }
                 continue;
             }
@@ -458,7 +456,7 @@ impl ScriptNode {
 fn if_condishion(state: &AnimationState, lhs: &Token, op: &Token, rhs: &Token) -> bool {
     match (lhs, rhs) {
         (Token::Index(id), Token::Int(index)) => {
-            let current = state.try_get_attribute::<usize>(id);
+            let current = state.get_attribute::<usize>(id);
             if current.is_none() {
                 return false;
             }
@@ -474,8 +472,8 @@ fn if_condishion(state: &AnimationState, lhs: &Token, op: &Token, rhs: &Token) -
             }
         }
         (Token::Index(id), Token::Index(id2)) => {
-            let id = state.try_get_attribute::<usize>(id);
-            let id2 = state.try_get_attribute::<usize>(id2);
+            let id = state.get_attribute::<usize>(id);
+            let id2 = state.get_attribute::<usize>(id2);
             if id.is_none() || id2.is_none() {
                 return false;
             }
@@ -490,8 +488,8 @@ fn if_condishion(state: &AnimationState, lhs: &Token, op: &Token, rhs: &Token) -
             }
         },
         (Token::Index(id), Token::None) => match op {
-            Token::Equals => state.try_get_attribute::<usize>(id).is_none(),
-            Token::NotEquals => state.try_get_attribute::<usize>(id).is_some(),
+            Token::Equals => state.get_attribute::<usize>(id).is_none(),
+            Token::NotEquals => state.get_attribute::<usize>(id).is_some(),
             _ => panic!("unsupported operator for index")
         }
         (Token::Index(_), _) => {panic!("unsupported operator for index")},

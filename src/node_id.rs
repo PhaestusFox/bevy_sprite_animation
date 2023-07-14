@@ -1,3 +1,5 @@
+use crate::prelude::get_hasher;
+
 #[derive(Debug, Hash, Reflect)]
 pub enum NodeId<'a> {
     Name(Cow<'a, str>),
@@ -224,10 +226,6 @@ impl NodeId<'_> {
     }
 
     pub fn hash_name<T: AsRef<str>>(name: T) -> u64 {
-        pub(crate) fn get_hasher() -> bevy::utils::AHasher {
-            use std::hash::BuildHasher;
-            bevy::utils::RandomState::with_seeds(42, 23, 13, 8).build_hasher()
-        }
         let mut hasher = get_hasher();
         let name = name.as_ref();
         std::hash::Hash::hash(name, &mut hasher);

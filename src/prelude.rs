@@ -8,6 +8,6 @@ pub use super::node_core::NodeResult;
 pub use super::nodes::*;
 pub use super::state::AnimationState;
 pub use super::system_set::AnimationSet;
-pub use super::AnimationNodeTree;
 pub use super::SpriteAnimationPlugin;
 pub use super::StartNode;
+pub use super::utils::get_hasher;

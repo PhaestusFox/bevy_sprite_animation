@@ -46,9 +46,9 @@ mod animation {
     fn zombie_state_update(
         mut zombies: Query<(&mut AnimationState, &ZState), (With<super::Zombie>, Changed<ZState>)>
     ) {
-        let att = Attribute::from_str("ZombieState");
+        let att = Attribute::new_attribute("ZombieState");
         for (mut state, name) in zombies.iter_mut() {
-            state.set_attribute(att, *name);
+            state.set_attribute(att.clone(), *name);
         }
     }
 
@@ -59,7 +59,7 @@ mod animation {
         let attribute = Attribute::from_str("ZombieState");
         for (state,mut name) in zombies.iter_mut() {
             if state.changed(&attribute) {
-                *name = state.get_attribute::<ZState>(&attribute);
+                *name = *state.attribute::<ZState>(&attribute);
             }
         }
     }
@@ -86,7 +86,7 @@ mod player {
         mut local: Local<[Attribute; 3]>,
         input: Res<Input<KeyCode>>,
     ){
-        if local[0] == Attribute::NULL {
+        if local[0] == Attribute::Default {
             local[0] = Attribute::from_str("ZombieState");
             local[1] = Attribute::new_index("Stand");
             local[2] = Attribute::new_index("Fall");
@@ -96,12 +96,12 @@ mod player {
             match key {
                 KeyCode::A | KeyCode::Left => {
                     if zstate.as_ref() == &ZState::Walking || zstate.as_ref() == &ZState::Idle {
-                        animation.set_attribute(Attribute::FLIP_X, true);
+                        animation.set_attribute(Attribute::FlipX, true);
                     }
                 },
                 KeyCode::D | KeyCode::Right => {
                     if zstate.as_ref() == &ZState::Walking || zstate.as_ref() == &ZState::Idle {
-                        animation.set_attribute(Attribute::FLIP_X, false);
+                        animation.set_attribute(Attribute::FlipY, false);
                     }
                 },
                 KeyCode::ShiftLeft | KeyCode::ShiftRight | KeyCode::Up => {
@@ -126,11 +126,11 @@ mod player {
                         ZState::Running => {ZState::Walking},
                         ZState::Attacking => {ZState::Attacking},
                         ZState::FallF => {ZState::FallF},
-                        ZState::StandF => {let index = animation.get_attribute::<usize>(&local[1]);
-                            animation.set_attribute(local[2], 6 - index); ZState::FallF},
+                        ZState::StandF => {let index = animation.index(&local[1]);
+                            animation.set_attribute(local[2].clone(), 6 - index); ZState::FallF},
                         ZState::FallB => {ZState::FallB},
-                        ZState::StandB => {let index = animation.get_attribute::<usize>(&local[1]);
-                            animation.set_attribute(local[2], 7 - index); ZState::FallB},
+                        ZState::StandB => {let index = animation.index(&local[1]);
+                            animation.set_attribute(local[2].clone(), 7 - index); ZState::FallB},
                         ZState::Test => {ZState::Test},
                         ZState::LayingB => {ZState::LayingB},
                         ZState::LayingF => {ZState::LayingF},
@@ -145,7 +145,7 @@ mod player {
                 _ => {}
             }
         }
-        animation.set_attribute(local[0], *zstate);
+        animation.set_attribute(local[0].clone(), *zstate);
     }
 }
 
@@ -155,7 +155,7 @@ fn main() {
         default_sampler: ImageSampler::nearest_descriptor(),
     }))
     .add_plugins((animation::YourAnimationPlugin,
-        SpriteAnimationPlugin,
+        SpriteAnimationPlugin::<20>,
         player::Player))
     .add_systems(Startup ,setup_animations)
     .register_type::<MatchNode<ZState>>()
@@ -167,25 +167,15 @@ fn main() {
 struct Zombie;
 
 #[derive(Component)]
-struct Handles(Handle<AnimationNode>, Handle<AnimationNode>);
+struct Handles(Handle<AnimationNode>, Handle<AnimationNode>, Handle<AnimationNode>);
 
 use bevy::reflect::TypePath;
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree>,
     asset_server: Res<AssetServer>,
     mut assets: ResMut<Assets<AnimationNode>>,
 ) {
-    let node: MatchNode<ZState> = MatchNode::new("ERROR", vec![(ZState::Attacking, NodeId::U64(1))], Attribute::INDEX, NodeId::U64(0));
-    println!("{}", <MatchNode<ZState> as TypePath>::short_type_path());
-
-    let fps_node = FPSNode::new("ZombieFPS", 7, NodeId::from_u64(1));
-    println!("\n\n{}\n\n", ron::ser::to_string_pretty(&fps_node, ron::ser::PrettyConfig::default()).unwrap());
-
     commands.spawn(Camera2dBundle::default());
-
-    let nodes = nodes.as_mut();
-    nodes.registor_node::<MatchNode::<ZState>>();
 
     let mut images = Vec::new();
     // for i in 0..=67 {
@@ -194,8 +184,6 @@ fn setup_animations(
     let test = assets.set(NodeId::from_u64(0x3), AnimationNode::new(
         bevy_sprite_animation::nodes::IndexNode::new("test", &images, true)
     ));
-
-    nodes.add_node(test);
 
     let fall_index = Attribute::new_index("Fall");
     let stand_index = Attribute::new_index("Stand");
@@ -219,6 +207,6 @@ fn setup_animations(
     start,
     player::Player,
     StartNode::from_u64(0),
-    Handles(test_handle, tree_handle),
+    Handles(test_handle, tree_handle, test),
     ));
 }

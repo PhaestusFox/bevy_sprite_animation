@@ -154,7 +154,7 @@ impl VariableNode {
             name: name.to_string(),
             frames: frames.to_vec(),
             is_loop,
-            index: Attribute::INDEX,
+            index: Attribute::IndexId(0),
         }
     }
 
@@ -187,10 +187,10 @@ impl AnimationNodeTrait for VariableNode {
 
     fn run(&self, state: &mut AnimationState) -> NodeResult {
         assert!(self.frames.len() != 0);
-        let mut index = state.try_get_attribute::<usize>(&self.index).unwrap_or(0);
-        let rem_time = state.get_attribute::<f32>(&Attribute::TIME_ON_FRAME);
-        let frames = state.get_attribute::<usize>(&Attribute::FRAMES);
-        let mut frame_time = state.get_attribute::<f32>(&Attribute::LAST_FPS) * frames as f32 + rem_time;
+        let mut index = state.index(&self.index);
+        let rem_time = state.attribute::<f32>(&Attribute::TimeThisFrame);
+        let frames = *state.attribute::<usize>(&Attribute::Frames);
+        let mut frame_time = state.attribute::<f32>(&Attribute::LastFPS) * frames as f32 + rem_time;
         let mut current: &(Handle<Image>, f32) = &self.frames[index % self.frames.len()];
         while frame_time > current.1 {
             frame_time -= current.1;
@@ -204,8 +204,8 @@ impl AnimationNodeTrait for VariableNode {
             }
             current = &self.frames[index];
         }
-        state.set_attribute(Attribute::TIME_ON_FRAME, frame_time);
-        state.set_attribute(self.index, index);
+        state.set_attribute(Attribute::TimeThisFrame, frame_time);
+        state.set_attribute(self.index.clone(), index);
         NodeResult::Done(current.0.clone())
     }
 
@@ -341,7 +341,7 @@ impl NodeLoader for VariableNodeLoader {
 
         let index = match map.get("index") {
             Some(v) => {ron::from_str(v)?},
-            None => {Attribute::INDEX}
+            None => {Attribute::IndexId(0)}
         };
         
         let is_loop = match map.get("is_loop") {
@@ -410,7 +410,7 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for VariableLoader<'de, 'b> {
             let mut name = None;
             let mut frames = None;
             let mut is_loop = false;
-            let mut index = Attribute::INDEX;
+            let mut index = Attribute::IndexId(0);
         while let Some(key) = map.next_key::<Fileds>()? {
             match key {
                 Fileds::Name => name = Some(map.next_value::<String>()?),
