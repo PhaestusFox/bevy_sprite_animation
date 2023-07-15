@@ -6,12 +6,21 @@ use crate::serde::BevyNodeLoader;
 use crate::error::BevySpriteAnimationError as Error;
 use crate::error::LoadError;
 use std::collections::HashMap;
+use std::fmt::Debug;
 use crate::prelude::*;
 
 pub(crate) mod utils {
+    use std::hash::Hasher;
+
     pub fn get_hasher() -> bevy::utils::AHasher {
         use std::hash::BuildHasher;
         bevy::utils::RandomState::with_seeds(42, 23, 13, 8).build_hasher()
+    }
+
+    pub fn get_hash<T: std::hash::Hash>(name: &T) -> u64 {
+        let mut hasher = get_hasher();
+        name.hash(&mut hasher);
+        hasher.finish()
     }
 }
 
@@ -69,14 +78,21 @@ impl AnimationNode {
     pub fn new(node: impl AnimationNodeTrait) -> AnimationNode {
         AnimationNode(Box::new(node))
     }
+
+    pub fn downcast_ref<T: std::any::Any>(&self) -> Option<&T> {
+        self.0.as_any().downcast_ref()
+    }
+}
+
+impl Debug for AnimationNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.debug(f)
+    }
 }
 
 impl<'a> AnimationNodeTrait for AnimationNode {
-    fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
+    fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
         self.0.run(state)
-    }
-    fn hash(&self) -> u64 {
-        self.0.hash()
     }
     fn id(&self) -> NodeId<'_> {
         self.0.id()
@@ -89,6 +105,9 @@ impl<'a> AnimationNodeTrait for AnimationNode {
     }
     fn serialize(&self, data: &mut String, asset_server: &AssetServer) -> Result<(), Error> {
         self.0.serialize(data, asset_server)
+    }
+    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.debug(f)
     }
 }
 
@@ -125,7 +144,7 @@ impl StartNode {
         StartNode(NodeId::U64(id))
     }
     pub fn from_name(name: impl Into<std::borrow::Cow<'static, str>>) -> StartNode {
-        StartNode(NodeId::Name(name.into()))
+        StartNode(NodeId::from_name(name))
     }
 }
 
@@ -140,12 +159,14 @@ fn animation_system<const MAX: usize>(
             match next {
                 NodeResult::Next(id) => if let Some(node) = nodes.get(&Handle::weak(id.to_static().into())) {
                     trace!("Running Node: {:?}",id);
-                    next = node.run(&mut state);
+                    next = match node.run(&mut state) {
+                        Ok(ok) => ok,
+                        Err(e) => {error!("{}", e); break;},
+                    }
                 } else {
                     error!("Node not found: {:?}", id);
                     break;
                 },
-                NodeResult::Error(e) => {error!("{}",e); break;}
                 NodeResult::Done(h) => {*image = h; break;},
             }
         }

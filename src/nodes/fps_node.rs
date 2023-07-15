@@ -1,7 +1,6 @@
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 use bevy::reflect::ReflectSerialize;
-use bevy::reflect::TypePath;
 use crate::error::BevySpriteAnimationError as Error;
 use crate::serde::ReflectLoadNode;
 use crate::node_core::CanLoad;
@@ -38,13 +37,6 @@ impl bevy_inspector_egui::Inspectable for FPSNode {
     }
 }
 
-impl std::hash::Hash for FPSNode {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.fps.hash(state);
-        self.then.hash(state);
-    }
-}
 
 impl FPSNode {
     pub fn new(name: &str, fps: u32, next: impl Into<NodeId<'static>>) -> FPSNode{
@@ -71,7 +63,7 @@ impl AnimationNodeTrait for FPSNode {
         &self.name
     }
 
-    fn run(&self, state: &mut AnimationState) -> NodeResult {
+    fn run(&self, state: &mut AnimationState) -> Result<NodeResult, RunError> {
         let delta = state.attribute::<f32>(&Attribute::Delta);
         let rem_time = state.get_attribute::<f32>(&Attribute::TimeThisFrame).cloned().unwrap_or(0.);
         let time = delta + rem_time;
@@ -80,7 +72,7 @@ impl AnimationNodeTrait for FPSNode {
         state.set_attribute(Attribute::Frames, frames as usize);
         state.set_attribute(Attribute::TimeThisFrame, rem_time);
         state.set_attribute(Attribute::LastFPS, self.frame_time());
-        NodeResult::Next(self.then.to_static())
+        Ok(NodeResult::Next(self.then.to_static()))
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
@@ -105,17 +97,8 @@ impl AnimationNodeTrait for FPSNode {
         "FPSNode".to_string()
     }
 
-    #[cfg(feature = "hash")]
-    fn hash(&self) -> u64 {
-        use std::hash::Hash;
-        use std::hash::Hasher;
-        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        Hash::hash(self,&mut hasher);
-        hasher.finish()
-    }
-
     fn id(&self) -> NodeId {
-        NodeId::Name((&self.name).into())
+        NodeId::from_name(&self.name)
     }
 }
 

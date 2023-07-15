@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render::texture::ImageSampler, reflect::DynamicTypePath};
+use bevy::{prelude::*, render::texture::ImageSampler};
 use bevy_sprite_animation::prelude::*;
 
 use animation::ZState;
@@ -13,7 +13,8 @@ mod animation {
 
     impl Plugin for YourAnimationPlugin {
         fn build(&self, app: &mut App) {
-            app.add_systems(Update, (zombie_state_update.before(AnimationSet::Update), zombie_update_state.after(AnimationSet::Update)));
+            app.add_systems(Update, (zombie_state_update.before(AnimationSet::Update), zombie_update_state.after(AnimationSet::Update)))
+            .register_type::<ZState>();
         }
     }
 
@@ -21,7 +22,7 @@ mod animation {
     ///ZState in the state the zombie is currently in
     #[derive(Debug, Component, Hash, PartialEq, Eq, Clone, Copy, Reflect,
         serde::Serialize, serde::Deserialize, PartialOrd, Ord)]
-    #[reflect_value()]
+    #[reflect_value(Deserialize)]
     pub enum ZState {
         Idle,
         Walking,
@@ -87,7 +88,7 @@ mod player {
         input: Res<Input<KeyCode>>,
     ){
         if local[0] == Attribute::Default {
-            local[0] = Attribute::from_str("ZombieState");
+            local[0] = Attribute::new_attribute("ZombieState");
             local[1] = Attribute::new_index("Stand");
             local[2] = Attribute::new_index("Fall");
         }
@@ -159,6 +160,7 @@ fn main() {
         player::Player))
     .add_systems(Startup ,setup_animations)
     .register_type::<MatchNode<ZState>>()
+    .add_systems(Update, print_tree)
     .run()
 }
 
@@ -166,31 +168,38 @@ fn main() {
 #[reflect(Component)]
 struct Zombie;
 
-#[derive(Component)]
-struct Handles(Handle<AnimationNode>, Handle<AnimationNode>, Handle<AnimationNode>);
+#[derive(Resource)]
+struct Handles(Vec<Handle<AnimationNode>>);
 
-use bevy::reflect::TypePath;
+fn print_tree(
+    nodes: Res<Assets<AnimationNode>>,
+    roots: Res<Handles>,
+    input: Res<Input<KeyCode>>,
+) {
+    if input.just_pressed(KeyCode::F7) {
+        for root in &roots.0 {
+            let Some(root) = nodes.get(root) else {error!("Node not loaded"); continue;};
+            let Some(root) = root.downcast_ref::<ReferenceNode>() else {error!("Not ReferenceNode"); continue;};
+            println!("{:?}", root.1);
+            for node in root.iter() {
+                println!("\t{:?}", nodes.get(node));
+            }
+            print!("\n");
+        }
+    }
+}
+
 fn setup_animations(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut assets: ResMut<Assets<AnimationNode>>,
 ) {
     commands.spawn(Camera2dBundle::default());
-
-    let mut images = Vec::new();
-    // for i in 0..=67 {
-    //     images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
-    // }
-    let test = assets.set(NodeId::from_u64(0x3), AnimationNode::new(
-        bevy_sprite_animation::nodes::IndexNode::new("test", &images, true)
-    ));
 
     let fall_index = Attribute::new_index("Fall");
     let stand_index = Attribute::new_index("Stand");
     let attack_index = Attribute::new_index("Attack");
 
     let test_handle: Handle<AnimationNode> = asset_server.load("test.node");
-
     let tree_handle: Handle<AnimationNode> = asset_server.load("./Zombie1.nodetree");
 
     let mut start = AnimationState::default();
@@ -207,6 +216,7 @@ fn setup_animations(
     start,
     player::Player,
     StartNode::from_u64(0),
-    Handles(test_handle, tree_handle, test),
     ));
+
+    commands.insert_resource(Handles(vec![test_handle, tree_handle]));
 }

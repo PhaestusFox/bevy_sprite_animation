@@ -1,29 +1,26 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 
-use crate::node_core::CanLoad;
 use crate::prelude::*;
 use crate::error::{BevySpriteAnimationError as Error, LoadError};
 use crate::serde::{LoadNode, ReflectLoadNode};
 
 #[cfg(not(feature = "serialize"))]
-pub trait MatchType:'static + Send + Sync + Eq + std::hash::Hash {}
+pub trait MatchType:'static + Send + Sync + Eq + std::hash::Hash + Debug {}
 #[cfg(not(feature = "serialize"))]
 impl<T> MatchType for T
-where T:'static + Send + Sync + Eq + std::hash::Hash
+where T:'static + Send + Sync + Eq + std::hash::Hash + Debug
 {
     
 }
 
 #[cfg(feature = "serialize")]
-pub trait MatchType:'static + Send + Sync + Eq + std::hash::Hash + serde::de::DeserializeOwned + serde::Serialize {}
+pub trait MatchType:'static + Send + Sync + Eq + serde::de::DeserializeOwned + serde::Serialize + Debug + std::hash::Hash{}
 #[cfg(feature = "serialize")]
 impl<T> MatchType for T
-where T:'static + Send + Sync + Eq + std::hash::Hash + serde::de::DeserializeOwned + serde::Serialize
-{
-    
-}
+where T:'static + Send + Sync + Eq + serde::de::DeserializeOwned + serde::Serialize + Debug + std::hash::Hash {}
 
-#[derive(Reflect)]
+#[derive(Reflect, Debug)]
 #[reflect(LoadNode)]
 pub struct MatchNode<T: MatchType> {
     name: String,
@@ -31,19 +28,6 @@ pub struct MatchNode<T: MatchType> {
     pairs: HashMap<T, NodeId<'static>>,
     check: Attribute,
     default: NodeId<'static>,
-}
-
-impl<T:MatchType> std::hash::Hash for MatchNode<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        let mut pairs: Vec<(&T, &NodeId)> = self.pairs.iter().collect();
-        pairs.sort_by(|a,b| { a.1.partial_cmp(b.1).unwrap()});
-        for pair in pairs.iter() {
-            pair.hash(state);
-        }
-        self.check.hash(state);
-        self.default.hash(state);
-    }
 }
 
 impl<T:MatchType> MatchNode<T> {
@@ -63,28 +47,21 @@ impl<T:MatchType> MatchNode<T> {
 
 }
 
-#[cfg(feature = "serialize")]
-impl<T: MatchType + serde::Serialize + serde::de::DeserializeOwned> CanLoad for MatchNode<T> {
-    fn loader() -> Box<dyn NodeLoader> {
-        Box::new(MatchNodeLoader::<T>::default())
-    }
-}
-
 impl<T> AnimationNodeTrait for MatchNode<T>
 where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any
 {
-    fn run(&self, state: &mut crate::state::AnimationState) -> NodeResult {
+    fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
 
         let val = match state.get_attribute::<T>(&self.check) {
             Ok(x) => x,
-            Err(e) => return NodeResult::Error(format!("{}",e)),
+            Err(e) => return Err(RunError::Custom(format!("Match: {}: {:?}", e, self.check))),
         };
 
-        if let Some(next) = self.pairs.get(&val) {
+        Ok(if let Some(next) = self.pairs.get(&val) {
             NodeResult::Next(next.clone())
         } else {
             NodeResult::Next(self.default.clone())
-        }
+        })
     }
 
     fn node_type(&self) -> String {
@@ -122,127 +99,17 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
         Ok(())
     }
 
-    #[cfg(feature = "hash")]
-    fn hash(&self) -> u64 {
-        use std::hash::Hash;
-        use std::hash::Hasher;
-        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        Hash::hash(self,&mut hasher);
-        hasher.finish()
+    fn id(&self) -> NodeId {
+        NodeId::from_name(&self.name)
     }
 
-    fn id(&self) -> NodeId {
-        NodeId::Name((&self.name).into())
+    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self, f)
     }
 }
 
 use bevy::reflect::Reflect;
-#[cfg(feature = "serialize")]
-pub use loader::MatchNodeLoader;
 use ron::error::SpannedError;
-
-#[cfg(feature = "serialize")]
-mod loader {
-    #[test]
-    fn match_node_name_offset() {
-        let mnl = MatchNodeLoader::<u32>::default();
-        assert_eq!("MatchNode<u32>", mnl.can_load()[0]);
-    }
-
-    use core::marker::PhantomData;
-
-    use crate::node_core::NodeLoader;
-
-    use crate::error::BevySpriteAnimationError as Error;
-    use crate::prelude::{NodeId, Attribute};
-
-    use super::{MatchNode, MatchType};
-
-    pub struct MatchNodeLoader<T>{
-        can_load: Vec<&'static str>, 
-        marker: PhantomData<T>,
-    }
-
-    impl<T:MatchType> Default for MatchNodeLoader<T>{
-        fn default() -> Self {
-            MatchNodeLoader {
-                can_load: vec![&std::any::type_name::<MatchNode<T>>()[42..]],
-                marker: PhantomData::default()
-            }
-        }
-    }
-    //012345678901234567890123456789012345678901
-    //bevy_sprite_animation::nodes::match_node::
-    impl<T> NodeLoader for MatchNodeLoader<T> where T:MatchType + std::any::Any + serde::de::DeserializeOwned + serde::Serialize {
-        fn load(&self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
-        use std::collections::HashMap;
-        let data = data.trim();
-        let data = if data.starts_with(&format!("{}(", self.can_load[0])) {&data[self.can_load[0].len()..].trim()} else {data};
-        let mut chars = data.chars().peekable();
-        let mut map: HashMap<&str, &str> = HashMap::new();
-        let mut start = 0;
-        let mut len = 0;
-        let mut key = "";
-        let mut is_key = true;
-        if let Some(c) = chars.peek() {if *c == '(' {start += 1; chars.next();}}
-        while let Some(c) = chars.next() {
-            match c {
-                ':' => {if is_key {
-                    key = &data[start..start+len].trim();
-                    start += len + 1;
-                    len = 0;
-                    is_key = false;
-                    }
-                },
-                ',' => if !is_key {
-                    //bevy::log::info!("add {} : {}", key, data[start..start+len].trim());
-                    map.insert(key, data[start..start+len].trim());
-                    start += len + 1;
-                    len = 0;
-                    is_key = true;
-                    key = "";
-                }
-                '[' => {
-                    while let Some(c) = chars.next() {
-                        len += 1;
-                        if c == ']' {
-                            len += 1;
-                            break;
-                        }
-                    }
-                }
-                _ => {
-                    len += 1;
-                }
-            }
-        }
-        if len > 0 {
-            map.insert(key, data[start..start+len].trim());
-        }
-        //bevy::prelude::info!("{:?}", map);
-        let check = map.get("check").ok_or(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to find check: Attribute"), loc: crate::here!(), raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Check", outer: None }, position: ron::de::Position{line: 0, col: 0}}, })?;
-        let pairs = map.get("pairs").ok_or(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to find pairs: [({},NodeId)]", std::any::type_name::<T>()), loc: crate::here!(), raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Pairs", outer: None }, position: ron::de::Position{line: 0, col: 0}}, })?;
-        let default = map.get("default").ok_or(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to find default: {}]", std::any::type_name::<T>()), loc: crate::here!(), raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Default", outer: None }, position: ron::de::Position{line: 0, col: 0}}, })?;
-        let name = map.get("name").ok_or(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to find name: String]"), loc: crate::here!(), raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Name", outer: None }, position: ron::de::Position{line: 0, col: 0}}, })?;
-        let check: Attribute = ron::from_str(check)?;
-        let pairs: Vec<(T, NodeId)> = ron::from_str(pairs).or_else(|e| {Err(Error::DeserializeError { node_type: "MatchNode", message: format!("Failed to deserialize pairs, check type matches"), loc: crate::here!(), raw: e })})?;
-        let default: NodeId = ron::from_str(default)?;
-        let name = name[1..name.len()-1].to_string();
-        let pairs: HashMap<T, NodeId> = pairs.into_iter().collect();
-        Ok(Box::new(MatchNode {
-            name,
-            pairs,
-            default,
-            check
-        }))
-    }
-
-    fn can_load(&self) -> &[&str] {
-        debug_assert!(self.can_load[0].starts_with("MatchNode<"));
-        &self.can_load
-    }
-    }
-}
 
 #[cfg(feature = "serialize")]
 impl<T: MatchType + serde::de::DeserializeOwned> LoadNode for MatchNode<T> {

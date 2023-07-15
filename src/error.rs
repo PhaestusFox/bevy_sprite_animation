@@ -10,7 +10,7 @@ use crate::prelude::Attribute;
 
 type Location = String;
 
-#[derive(Debug,Error)]
+#[derive(Debug, Error)]
 pub enum BevySpriteAnimationError {
     #[error("SerializeError")]
     SerializeError,
@@ -128,9 +128,18 @@ impl LoadError {
     }
 }
 
-#[macro_export]
-macro_rules! here {
-    () => {
-        format!("{}:{}:{}",file!(), line!(), column!())
-    };
+#[derive(Debug, Error)]
+pub enum StateError {
+    #[error("Attribute not in state")]
+    NotFound,
+    #[error("Attribute has a diffrent type")]
+    WrongType,
+}
+
+#[derive(Debug, Error)]
+pub enum RunError {
+    #[error("{0}")]
+    StateError(#[from] StateError),
+    #[error("{0}")]
+    Custom(String)
 }

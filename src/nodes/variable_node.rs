@@ -1,5 +1,4 @@
 use crate::error::LoadError;
-use crate::node_core::CanLoad;
 use crate::prelude::*;
 use crate::serde::LoadNode;
 use crate::serde::ReflectLoadNode;
@@ -9,117 +8,6 @@ use bevy::prelude::Image;
 use bevy::reflect::Reflect;
 use serde::Deserializer;
 use crate::error::BevySpriteAnimationError as Error;
-
-#[cfg(test)]
-mod test {
-    use crate::test::test_asset_server;
-    use super::VariableNode;
-    use super::VariableNodeLoader;
-    use crate::node_core::AnimationNodeTrait;
-    use crate::node_core::NodeLoader;
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn deserialize_clean_str() {
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push((asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)), (i+1) as f32 / 10.));
-        }
-        let mut loader = VariableNodeLoader;
-        let test_node = loader.load("name: \"Zombie1_Idle\",
-        frames: [
-        (Zombie1/zombie1_00000.png, 0.1),
-        (Zombie1/zombie1_00001.png, 0.2),
-        (Zombie1/zombie1_00002.png, 0.3),
-        ]", &asset_server).unwrap();
-    let true_node = Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
-    assert_eq!(test_node.hash(), true_node.hash());
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn deserialize_capped_str() {
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push((asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)), (i+1) as f32 / 10.));
-        }
-        let mut loader = VariableNodeLoader;
-        let test_node = loader.load("
-            (
-            name: \"Zombie1_Idle\",
-            frames: [
-            (Zombie1/zombie1_00000.png, 0.1),
-            (Zombie1/zombie1_00001.png, 0.2),
-            (Zombie1/zombie1_00002.png, 0.3),
-            ],
-            ),
-        ", &asset_server).unwrap();
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
-        assert_eq!(test_node.hash(), true_node.hash());
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn deserialize_full_str() {
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push((asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)), (i+1) as f32 / 10.));
-        }
-        let mut loader = VariableNodeLoader;
-        let test_node = loader.load("
-                VariableNode(
-                name: \"Zombie1_Idle\",
-                frames: [
-                (Zombie1/zombie1_00000.png, 0.1),
-                (Zombie1/zombie1_00001.png, 0.2),
-                (Zombie1/zombie1_00002.png, 0.3),
-                ],
-                ),
-        ", &asset_server).unwrap();
-        // let node: &dyn Any = &test_node;
-        // let node = node.downcast_ref::<VariableNode>().unwrap();
-        // println!("{:#?}", node);
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
-        assert_eq!(test_node.hash(), true_node.hash());
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn serialize_str_pretty() {
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push((asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)), (i+1) as f32 / 10.));
-        }
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
-        let mut res = String::new();
-        let ser_res = true_node.serialize(&mut res, &asset_server);
-        assert!(ser_res.is_ok(), "{}", ser_res.err().unwrap());
-        println!("{}", res);
-        assert!(res == "VariableNode(\n\tname: \"Zombie1_Idle\",\n\tframes: [\n\t(Zombie1/zombie1_00000.png, 0.1),\n\t(Zombie1/zombie1_00001.png, 0.2),\n\t(Zombie1/zombie1_00002.png, 0.3),\n\t],\n\tis_loop: true,\n\tindex: IndexID(256),\n\t),\n")
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn serialize_deserialize() {
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push((asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)), (i+1) as f32 / 10.));
-        }
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(VariableNode::new("Zombie1_Idle", &handles[..3], true));
-        let mut res = String::new();
-        assert!(true_node.serialize(&mut res, &asset_server).is_ok());
-        let mut loader = VariableNodeLoader;
-        let test_node = loader.load(&res, &asset_server);
-        assert!(test_node.is_ok(), "{}", test_node.err().unwrap());
-        let test_node = test_node.unwrap();
-        assert_eq!(test_node.hash(), true_node.hash())
-    }
-}
 
 #[derive(Debug, Reflect)]
 #[reflect(LoadNode)]
@@ -169,13 +57,6 @@ impl VariableNode {
     }
 }
 
-#[cfg(feature = "serialize")]
-impl CanLoad for VariableNode {
-    fn loader() -> Box<dyn NodeLoader> {
-        Box::new(VariableNodeLoader)
-    }
-}
-
 impl AnimationNodeTrait for VariableNode {
     fn name(&self) -> &str {
         &self.name
@@ -185,7 +66,7 @@ impl AnimationNodeTrait for VariableNode {
         "VariableNode".to_string()
     }
 
-    fn run(&self, state: &mut AnimationState) -> NodeResult {
+    fn run(&self, state: &mut AnimationState) -> Result<NodeResult, RunError> {
         assert!(self.frames.len() != 0);
         let mut index = state.index(&self.index);
         let rem_time = state.attribute::<f32>(&Attribute::TimeThisFrame);
@@ -206,7 +87,7 @@ impl AnimationNodeTrait for VariableNode {
         }
         state.set_attribute(Attribute::TimeThisFrame, frame_time);
         state.set_attribute(self.index.clone(), index);
-        NodeResult::Done(current.0.clone())
+        Ok(NodeResult::Done(current.0.clone()))
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
@@ -239,142 +120,14 @@ impl AnimationNodeTrait for VariableNode {
         Ok(())
     }
 
-    #[cfg(feature = "hash")]
-    fn hash(&self) -> u64 {
-        use std::hash::Hash;
-        use std::hash::Hasher;
-        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        self.name.hash(&mut hasher);
-        self.index.hash(&mut hasher);
-        self.is_loop.hash(&mut hasher);
-        //todo!() hash frame time as well
-        for (frame, _) in self.frames.iter() {
-            frame.hash(&mut hasher);
-        }
-        hasher.finish()
-    }
-
     fn id(&self) -> NodeId {
-        NodeId::Name((&self.name).into())
-    }
-}
-
-#[cfg(feature = "serialize")]
-pub use loader::VariableNodeLoader;
-
-#[cfg(feature = "serialize")]
-mod loader {
-use crate::{node_core::NodeLoader, prelude::Attribute};
-use std::collections::HashMap;
-use super::VariableNode;
-
-use crate::prelude::{AnimationNodeTrait, BevySpriteAnimationError as Error};
-pub struct  VariableNodeLoader;
-
-impl NodeLoader for VariableNodeLoader {
-    fn load(&self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
-        let data = data.trim();
-        let data = if data.starts_with("VariableNode(") {&data[13..]} else {data};
-        let mut chars = data.chars().peekable();
-        let mut map: HashMap<&str, &str> = HashMap::new();
-        let mut start = 0;
-        let mut len = 0;
-        let mut key = "";
-        let mut is_key = true;
-        if let Some(c) = chars.peek() {if *c == '(' {start += 1; chars.next();}}
-        while let Some(c) = chars.next() {
-            match c {
-                ':' => {if is_key {
-                    key = &data[start..start+len].trim();
-                    start += len + 1;
-                    len = 0;
-                    is_key = false;
-                    }
-                },
-                ',' => if !is_key {
-                    map.insert(key, data[start..start+len].trim());
-                    start += len + 1;
-                    len = 0;
-                    is_key = true;
-                    key = "";
-                }
-                '[' => {
-                    while let Some(c) = chars.next() {
-                        len += 1;
-                        if c == ']' {
-                            len += 1;
-                            break;
-                        }
-                    }
-                }
-                _ => {
-                    len += 1;
-                }
-            }
-        }
-        if len > 0 {
-            map.insert(key, data[start..start+len].trim());
-        }
-        let mut frames = Vec::new();
-        let mut paths = if let Some(paths) = map.get("frames") {
-            paths[1..paths.len() - 1].split_terminator(',')
-        } else {
-            return Err(Error::DeserializeError{
-                node_type: "VariableNode",
-                message: "Failed to find frames".to_string(),
-                raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Frames", outer: None }, position: ron::de::Position{line: 0, col: 0}},
-                loc: crate::here!()},
-            );
-        };
-        while let Some(path) = paths.next() {
-            let path = path.trim();
-            let (path, time) = {
-                println!("{}", path);
-                if path.len() == 0 {continue;}
-                let time = paths.next().ok_or(Error::DeserializeError { node_type: "VariableNode", message: "Frame Time not found".into(), loc: path.to_string(), raw: ron::de::SpannedError{code: ron::Error::MissingStructField { field: "Time", outer: None }, position: ron::de::Position{line: 0,col: 0}}})?.trim();
-                println!("{}", time);
-                let time = time[..time.len()-1].parse::<f32>().or_else(|e| Err(Error::ParseFloatError(e)))?;
-                (&path[1..], time)
-            };
-            frames.push((asset_server.load(path.trim()), time))
-        }
-
-        let index = match map.get("index") {
-            Some(v) => {ron::from_str(v)?},
-            None => {Attribute::IndexId(0)}
-        };
-        
-        let is_loop = match map.get("is_loop") {
-            Some(v) => {!v.trim().starts_with("f")},
-            None => {true}
-        };
-
-        let name = if let Some(v) = map.get("name") {
-            v[1..v.len() - 1].to_string()
-        } else {
-            return Err(Error::DeserializeError{
-                node_type: "VariableNode",
-                message: "Failed to find name".to_string(),
-                loc: crate::here!(),
-                raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Name", outer: None }, position: ron::de::Position{line: 0, col: 0}},
-                });
-        };
-        Ok(Box::new(VariableNode {
-            name,
-            frames,
-            index,
-            is_loop
-        }))
+        NodeId::from_name(&self.name)
     }
 
-    fn can_load(&self) -> &[&str] {
-        &["VariableNode"]
+    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self, f)
     }
 }
-
-}
-
-
 
 impl LoadNode for VariableNode {
     fn load<'b>(s: &str, load_context: &mut bevy::asset::LoadContext<'b>, dependencies: &mut Vec<AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
@@ -405,7 +158,6 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for VariableLoader<'de, 'b> {
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
             A: serde::de::MapAccess<'de>, {
-        use serde::de::MapAccess;
         use serde::de::Error;
             let mut name = None;
             let mut frames = None;

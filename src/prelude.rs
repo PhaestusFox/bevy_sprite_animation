@@ -11,3 +11,4 @@ pub use super::system_set::AnimationSet;
 pub use super::SpriteAnimationPlugin;
 pub use super::StartNode;
 pub use super::utils::get_hasher;
+pub use super::error::RunError;

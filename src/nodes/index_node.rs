@@ -1,5 +1,4 @@
 use crate::error::LoadError;
-use crate::node_core::CanLoad;
 use crate::prelude::*;
 use crate::serde::LoadNode;
 use crate::serde::ReflectLoadNode;
@@ -9,128 +8,6 @@ use bevy::prelude::Image;
 use bevy::reflect::Reflect;
 use serde::Deserializer;
 use crate::error::BevySpriteAnimationError as Error;
-
-#[cfg(test)]
-mod test {
-    use crate::test::test_asset_server;
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn deserialize_clean_str() {
-        use super::IndexNode;
-        use crate::node_core::AnimationNodeTrait;
-        use crate::node_core::NodeLoader;
-        use super::IndexNodeLoader;
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
-        }
-        let mut loader = IndexNodeLoader;
-        let test_node = loader.load("name: \"Zombie1_Idle\",
-        frames: [
-        Zombie1/zombie1_00000.png,
-        Zombie1/zombie1_00001.png,
-        Zombie1/zombie1_00002.png,
-        ]", &asset_server).unwrap();
-    let true_node = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
-    assert_eq!(test_node.hash(), true_node.hash());
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn deserialize_capped_str() {
-        use super::IndexNode;
-        use crate::node_core::AnimationNodeTrait;
-        use crate::node_core::NodeLoader;
-        use super::IndexNodeLoader;
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
-        }
-        let mut loader = IndexNodeLoader;
-        let test_node = loader.load("
-            (
-            name: \"Zombie1_Idle\",
-            frames: [
-            Zombie1/zombie1_00000.png,
-            Zombie1/zombie1_00001.png,
-            Zombie1/zombie1_00002.png,
-            ],
-            ),
-        ", &asset_server).unwrap();
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
-        assert_eq!(test_node.hash(), true_node.hash());
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn deserialize_full_str() {
-        use super::IndexNode;
-        use crate::node_core::AnimationNodeTrait;
-        use crate::node_core::NodeLoader;
-        use super::IndexNodeLoader;
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
-        }
-        let mut loader = IndexNodeLoader;
-        let test_node = loader.load("
-            IndexNode(
-            name: \"Zombie1_Idle\",
-            frames: [
-            Zombie1/zombie1_00000.png,
-            Zombie1/zombie1_00001.png,
-            Zombie1/zombie1_00002.png,
-            ],
-            is_loop: true,
-            ),
-        ", &asset_server).unwrap();
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
-        assert_eq!(test_node.hash(), true_node.hash());
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn serialize_str_pretty() {
-        use super::IndexNode;
-        use crate::node_core::AnimationNodeTrait;
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
-        }
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
-        let mut res = String::new();
-        let ser_res = true_node.serialize(&mut res, &asset_server);
-        assert!(ser_res.is_ok(), "{}", ser_res.err().unwrap());
-        assert!(res == "IndexNode(\n\tname: \"Zombie1_Idle\",\n\tframes: [\n\tZombie1/zombie1_00000.png,\n\tZombie1/zombie1_00001.png,\n\tZombie1/zombie1_00002.png,\n\t],\n\tis_loop: true,\n\tindex: IndexID(256),\n\t),\n")
-    }
-
-    #[test]
-    #[cfg(feature = "serialize")]
-    fn serialize_deserialize() {
-        use super::IndexNode;
-        use crate::node_core::NodeLoader;
-        use crate::node_core::AnimationNodeTrait;
-        use super::IndexNodeLoader;
-        let asset_server = test_asset_server();
-        let mut handles = Vec::new();
-        for i in 0..3 {
-            handles.push(asset_server.load(&format!("Zombie1/zombie1_{:05}.png", i)));
-        }
-        let true_node: Box<dyn AnimationNodeTrait> = Box::new(IndexNode::new("Zombie1_Idle", &handles[..3], true));
-        let mut res = String::new();
-        assert!(true_node.serialize(&mut res, &asset_server).is_ok());
-        let loader = IndexNodeLoader;
-        let test_node = loader.load(&res, &asset_server);
-        assert!(test_node.is_ok(), "{}", test_node.err().unwrap());
-        let test_node = test_node.unwrap();
-        assert_eq!(test_node.hash(), true_node.hash())
-    }
-}
 
 #[derive(Debug, Reflect, std::hash::Hash)]
 #[reflect(LoadNode)]
@@ -180,13 +57,6 @@ impl IndexNode {
     }
 }
 
-#[cfg(feature = "serialize")]
-impl CanLoad for IndexNode {
-    fn loader() -> Box<dyn NodeLoader> {
-        Box::new(IndexNodeLoader)
-    }
-}
-
 impl AnimationNodeTrait for IndexNode {
     fn name(&self) -> &str {
         &self.name
@@ -196,7 +66,7 @@ impl AnimationNodeTrait for IndexNode {
         "IndexNode".to_string()
     }
 
-    fn run(&self, state: &mut AnimationState) -> NodeResult {
+    fn run(&self, state: &mut AnimationState) -> Result<NodeResult, RunError> {
         assert!(self.frames.len() != 0);
         let mut index = state.index(&self.index);
         let frames = state.attribute::<usize>(&Attribute::Frames);
@@ -209,7 +79,7 @@ impl AnimationNodeTrait for IndexNode {
             }
         }
         state.set_attribute(self.index.clone(), index);
-        NodeResult::Done(self.frames[index].clone())
+        Ok(NodeResult::Done(self.frames[index].clone()))
     }
 
     #[cfg(feature = "bevy-inspector-egui")]
@@ -240,127 +110,13 @@ impl AnimationNodeTrait for IndexNode {
         Ok(())
     }
 
-    #[cfg(feature = "hash")]
-    fn hash(&self) -> u64 {
-        use std::hash::Hash;
-        use std::hash::Hasher;
-        let mut hasher = std::collections::hash_map::DefaultHasher::default();
-        Hash::hash(self,&mut hasher);
-        hasher.finish()
-    }
-
     fn id(&self) -> NodeId {
-        NodeId::Name((&self.name).into())
-    }
-}
-
-#[cfg(feature = "serialize")]
-pub use loader::IndexNodeLoader;
-
-#[cfg(feature = "serialize")]
-mod loader {
-use crate::{node_core::NodeLoader, prelude::Attribute};
-use std::collections::HashMap;
-use super::IndexNode;
-
-use crate::prelude::{AnimationNodeTrait, BevySpriteAnimationError as Error};
-pub struct IndexNodeLoader;
-
-impl NodeLoader for IndexNodeLoader {
-    fn load(&self, data: &str, asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn AnimationNodeTrait>, Error> {
-        let data = data.trim();
-        let data = if data.starts_with("IndexNode(") {&data[10..]} else {data};
-        let mut chars = data.chars().peekable();
-        let mut map: HashMap<&str, &str> = HashMap::new();
-        let mut start = 0;
-        let mut len = 0;
-        let mut key = "";
-        let mut is_key = true;
-        if let Some(c) = chars.peek() {if *c == '(' {start += 1; chars.next();}}
-        while let Some(c) = chars.next() {
-            match c {
-                ':' => {if is_key {
-                    key = &data[start..start+len].trim();
-                    start += len + 1;
-                    len = 0;
-                    is_key = false;
-                    }
-                },
-                ',' => if !is_key {
-                    //info!("add {} : {}", key, data[start..start+len].trim());
-                    map.insert(key, data[start..start+len].trim());
-                    start += len + 1;
-                    len = 0;
-                    is_key = true;
-                    key = "";
-                }
-                '[' => {
-                    while let Some(c) = chars.next() {
-                        len += 1;
-                        if c == ']' {
-                            len += 1;
-                            break;
-                        }
-                    }
-                }
-                _ => {
-                    len += 1;
-                }
-            }
-        }
-        if len > 0 {
-            map.insert(key, data[start..start+len].trim());
-        }
-        let mut frames = Vec::new();
-        for path in if let Some(paths) = map.get("frames") {
-            paths[1..paths.len() - 1].split_terminator(',')
-        } else {
-            return Err(Error::DeserializeError{
-                node_type: "IndexNode",
-                message: "Failed to find frames".to_string(),
-                loc: crate::here!(),
-                raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Frames", outer: None }, position: ron::de::Position{line: 0, col: 0}},
-            });
-        } {
-            if path.trim().len() == 0 {
-                continue;
-            }
-            frames.push(asset_server.load(path[0..path.len()].trim()))
-        }
-
-        let index = match map.get("index") {
-            Some(v) => {ron::from_str(v)?},
-            None => {Attribute::IndexId(0)}
-        };
-        
-        let is_loop = match map.get("is_loop") {
-            Some(v) => {!v.trim().starts_with("f")},
-            None => {true}
-        };
-
-        let name = if let Some(v) = map.get("name") {
-            v[1..v.len() - 1].to_string()
-        } else {
-            return Err(Error::DeserializeError{
-                node_type: "IndexNode",
-                message: "Failed to find name".to_string(),
-                loc: crate::here!(),
-                raw: ron::de::SpannedError {code: ron::Error::MissingStructField { field: "Name", outer: None }, position: ron::de::Position{line: 0, col: 0}},
-                });
-        };
-        Ok(Box::new(IndexNode {
-            name,
-            frames,
-            index,
-            is_loop
-        }))
+        NodeId::from_name(&self.name)
     }
 
-    fn can_load(&self) -> &[&str] {
-        &["IndexNode"]
+    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Debug::fmt(&self, f)
     }
-}
-
 }
 
 impl LoadNode for IndexNode {
@@ -392,12 +148,11 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
         where
             A: serde::de::MapAccess<'de>, {
-        use serde::de::MapAccess;
         use serde::de::Error;
-            let mut name = None;
-            let mut frames = None;
-            let mut is_loop = false;
-            let mut index = Attribute::IndexId(0);
+        let mut name = None;
+        let mut frames = None;
+        let mut is_loop = false;
+        let mut index = Attribute::IndexId(0);
         while let Some(key) = map.next_key::<Fileds>()? {
             match key {
                 Fileds::Name => name = Some(map.next_value::<String>()?),

@@ -1,6 +1,8 @@
+use crate::error::StateError;
+
 use super::prelude::*;
 use super::error::BevySpriteAnimationError as Error;
-use bevy::utils::{HashMap, HashSet};
+use bevy::{utils::{HashMap, HashSet}, reflect::TypeData};
 use serde::{Serialize, de::DeserializeOwned};
 
 use bevy::prelude::*;
@@ -8,9 +10,19 @@ use thiserror::Error;
 
 use std::any::{TypeId, Any};
 
+pub trait AnimationStateObj: Any + Send + Sync + Reflect {
+    fn get_registration(&self) -> bevy::reflect::TypeRegistration;
+}
+
+impl<T: Any + Send + Sync + Reflect + bevy::reflect::GetTypeRegistration> AnimationStateObj for T  {
+    fn get_registration(&self) -> bevy::reflect::TypeRegistration {
+        T::get_type_registration()
+    }
+}
+
 #[derive(Component)]
 pub struct AnimationState {
-    data: HashMap<Attribute, Box<dyn Any + Send + Sync>>,
+    data: HashMap<Attribute, Box<dyn AnimationStateObj>>,
     pub(crate) changed: HashSet<Attribute>,
     pub(crate) temp: HashSet<Attribute>,
 }
@@ -18,7 +30,7 @@ pub struct AnimationState {
 impl std::fmt::Debug for AnimationState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AnimationState")
-        .field("data", &self.data)
+        // .field("data", &self.data)
         .field("changed", &self.changed)
         .field("temp", &self.temp)
         .finish()
@@ -27,7 +39,7 @@ impl std::fmt::Debug for AnimationState {
 
 impl Default for AnimationState {
     fn default() -> Self {
-        let mut data: HashMap<Attribute, Box<dyn Any + Send + Sync>> = HashMap::default();
+        let mut data: HashMap<Attribute, Box<dyn AnimationStateObj>> = HashMap::default();
         data.insert(Attribute::Delta,  Box::new(0.0f32));
         data.insert(Attribute::Frames, Box::new(0));
         data.insert(Attribute::FlipX, Box::new(false));
@@ -35,14 +47,6 @@ impl Default for AnimationState {
         let s = Self { data, changed: HashSet::new(), temp: HashSet::new()};
         s
     }
-}
-
-#[derive(Debug, Error)]
-pub enum StateError {
-    #[error("Attribute not in state")]
-    NotFound,
-    #[error("Attribute has a diffrent type")]
-    WrongType,
 }
 
 impl AnimationState {
@@ -61,14 +65,14 @@ impl AnimationState {
     #[inline(always)]
     pub fn get_attribute<D: 'static>(&self, key: &Attribute) -> Result<&D, StateError> {
         if let Some(data) = self.data.get(key) {
-            data.downcast_ref::<D>().ok_or(StateError::WrongType)
+            data.as_any().downcast_ref::<D>().ok_or(StateError::WrongType)
         } else {
             Err(StateError::NotFound)
         }
     }
 
     /// sets an Attribute to a specific type and val
-    pub fn set_attribute<D: Any + Send + Sync>(&mut self, key: Attribute, val: D) {
+    pub fn set_attribute<D: AnimationStateObj>(&mut self, key: Attribute, val: D) {
         self.change(key.clone());
         self.data.insert(key, Box::new(val));
     }
@@ -110,6 +114,18 @@ impl AnimationState {
         if !index.is_index() {return None;}
         Some(self.get_attribute::<usize>(index).cloned().unwrap_or_default())
     }
+
+    #[cfg(feature = "ron")]
+    pub(crate) fn set_from_ron(&mut self, attribute: &Attribute, s: &str) -> Result<(), StateError> {
+        let Some(main) = self.data.get_mut(attribute) else {return Err(StateError::NotFound);};
+        let data = main.get_registration();
+        let data = data.data::<ReflectDeserialize>().expect("Type Regiestese ReflectDeserialize");
+        let mut deserializer = ron::Deserializer::from_str(s).expect("IDK");
+        let val = data.deserialize(&mut deserializer).expect("IDK");
+        main.set(val).expect("Same Type");
+        Ok(())
+    }
+
 }
 
 pub(crate) fn update_delta(

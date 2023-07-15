@@ -18,7 +18,6 @@ uuid = "*"
 strum_macros = "*"
 
 [features]
-default = ["serialize", "hash"]
+default = ["serialize"]
 serialize = ["ron", "serde"]
 dot = []
-hash = []

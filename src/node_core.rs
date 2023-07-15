@@ -1,11 +1,11 @@
-use std::any::Any;
+use std::{any::Any, fmt::Debug};
 
 use bevy::prelude::*;
-use crate::{error::BevySpriteAnimationError as Error, prelude::*};
+use crate::{error::{BevySpriteAnimationError as Error, RunError}, prelude::*};
 
-pub trait AnimationNodeTrait: Send + Sync + Any
+pub trait AnimationNodeTrait: Send + Sync + Any + AnimationNodeAsAny
 {
-    fn run(&self, state: &mut super::state::AnimationState) -> NodeResult;
+    fn run(&self, state: &mut super::state::AnimationState) -> Result<NodeResult, RunError>;
     fn name(&self) -> &str;
     #[cfg(feature = "bevy-inspector-egui")]
     fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool;
@@ -19,8 +19,34 @@ pub trait AnimationNodeTrait: Send + Sync + Any
         Ok(())
     }
     fn node_type(&self) -> String;
-    #[cfg(feature = "hash")]
-    fn hash(&self) -> u64;
+
+    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("You can impl AnimationNodeTrait::debug for more info\n")?;
+        f.write_str("Node: \n")?;
+        f.write_str(self.name())
+    }
+}
+
+impl Debug for dyn AnimationNodeTrait {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.debug(f)
+    }
+}
+
+impl dyn AnimationNodeTrait {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        self.as_any().downcast_ref()
+    }
+}
+
+pub trait AnimationNodeAsAny: Any {
+    fn as_any(&self) -> &dyn Any;
+}
+
+impl<T: Any> AnimationNodeAsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self as &dyn Any
+    }
 }
 
 pub trait CanLoad {
@@ -31,7 +57,6 @@ pub trait CanLoad {
 pub enum NodeResult {
     Next(NodeId<'static>),
     Done(Handle<Image>),
-    Error(String),
 }
 
 impl std::fmt::Display for NodeResult{
@@ -39,7 +64,6 @@ impl std::fmt::Display for NodeResult{
         match self {
             NodeResult::Next(id) => f.write_fmt(format_args!("Next({:#?})", id)),
             NodeResult::Done(_) => f.write_str("Done"),
-            NodeResult::Error(_) => f.write_str("Error"),
         }
     }
 }

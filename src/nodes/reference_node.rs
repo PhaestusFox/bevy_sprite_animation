@@ -2,13 +2,19 @@ use std::path::PathBuf;
 
 use bevy::prelude::Handle;
 
-use crate::{AnimationNode, prelude::{AnimationNodeTrait, NodeResult}};
+use crate::{AnimationNode, prelude::*};
 
 pub struct ReferenceNode(pub Vec<Handle<AnimationNode>>, pub PathBuf);
 
+impl ReferenceNode {
+    pub fn iter(&self) -> impl Iterator<Item = &Handle<AnimationNode>> {
+        self.0.iter()
+    }
+}
+
 impl AnimationNodeTrait for ReferenceNode {
-    fn run(&self, _: &mut crate::state::AnimationState) -> crate::prelude::NodeResult {
-        NodeResult::Error("Reference Node should not be part of the tree".to_string())
+    fn run(&self, _: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
+        Err(RunError::Custom("Reference Node should not be part of the tree".to_string()))
     }
 
     fn name(&self) -> &str {
@@ -22,9 +28,5 @@ impl AnimationNodeTrait for ReferenceNode {
 
     fn node_type(&self) -> String {
         "Reference Node".to_string()
-    }
-
-    fn hash(&self) -> u64 {
-        0
     }
 }

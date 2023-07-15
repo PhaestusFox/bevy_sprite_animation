@@ -1,44 +1,31 @@
-use crate::prelude::get_hasher;
+use crate::{prelude::get_hasher, utils::get_hash};
 
-#[derive(Debug, Hash, Reflect)]
+#[derive(Debug, Reflect)]
 pub enum NodeId<'a> {
-    Name(Cow<'a, str>),
+    Name(u64, Cow<'a, str>),
     U64(u64),
     Hash(u64),
 }
 
 impl PartialOrd for NodeId<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self {
-            NodeId::Name(id) => match other{
-                NodeId::Name(other) => Some(id.cmp(other)),
-                NodeId::U64(_) |
-                NodeId::Hash(_) => Some(std::cmp::Ordering::Less),
-            },
-            NodeId::U64(id) |
-            NodeId::Hash(id) => match other {
-                NodeId::Name(_) => Some(std::cmp::Ordering::Greater),
-                NodeId::U64(other) |
-                NodeId::Hash(other) => Some(id.cmp(other)),
-            },
-        }
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for NodeId<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match self {
-            NodeId::Name(id) => match other{
-                NodeId::Name(other) => id.cmp(other),
-                NodeId::U64(_) |
-                NodeId::Hash(_) => std::cmp::Ordering::Less,
-            },
-            NodeId::U64(id) |
-            NodeId::Hash(id) => match other {
-                NodeId::Name(_) => std::cmp::Ordering::Greater,
-                NodeId::U64(other) |
-                NodeId::Hash(other) => id.cmp(other),
-            },
+        use std::cmp::Ordering;
+        match (self, other) {
+            (NodeId::Name(_, name), NodeId::Name(_, name1)) => name.cmp(name1),
+            (NodeId::Name(_, _), NodeId::U64(_)) |
+            (NodeId::Hash(_), NodeId::U64(_)) |
+            (NodeId::Name(_, _), NodeId::Hash(_)) => Ordering::Greater,
+            (NodeId::Hash(_), NodeId::Name(_, _)) |
+            (NodeId::U64(_), NodeId::Hash(_)) |
+            (NodeId::U64(_), NodeId::Name(_, _)) => Ordering::Less,
+            (NodeId::Hash(a), NodeId::Hash(b)) |
+            (NodeId::U64(a), NodeId::U64(b)) => a.cmp(b),
         }
     }
 }
@@ -57,7 +44,7 @@ impl serde::Serialize for NodeId<'_> {
         where
             S: serde::Serializer {
         match self {
-            NodeId::Name(name) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), name),
+            NodeId::Name(_, name) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), name),
             NodeId::U64(id) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Id as u32, Variant::Id.as_ref(), id),
             NodeId::Hash(hash) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), hash),
         }
@@ -90,7 +77,7 @@ impl<'de> serde::de::Visitor<'de> for NodeVisitor {
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
         where
             E: serde::de::Error, {
-        Ok(NodeId::Name(v.into()))
+        Ok(NodeId::Name(get_hash(&v), v.into()))
     }
 
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
@@ -162,24 +149,24 @@ impl Eq for NodeId<'_> {}
 
 impl PartialEq for NodeId<'_> {
     fn eq(&self, other: &Self) -> bool {
-        let id = match self {
-            NodeId::U64(id) => return if let NodeId::U64(other) = other {*id == *other} else {false},
-            NodeId::Name(name) => NodeId::hash_name(name),
-            NodeId::Hash(id) => *id,
-        };
-        let other = match other {
-            NodeId::U64(_) => return false,
-            NodeId::Name(name) => NodeId::hash_name(name),
-            NodeId::Hash(id) => *id,
-        };
-        id == other
+        match (self, other) {
+            (NodeId::U64(id), NodeId::U64(id1)) |
+            (NodeId::Name(id, _), NodeId::Name(id1, _)) |
+            (NodeId::Name(id, _), NodeId::Hash(id1)) |
+            (NodeId::Hash(id), NodeId::Hash(id1)) |
+            (NodeId::Hash(id), NodeId::Name(id1, _)) => id == id1,
+            (NodeId::U64(_), NodeId::Name(_, _)) |
+            (NodeId::U64(_), NodeId::Hash(_)) |
+            (NodeId::Hash(_), NodeId::U64(_)) |
+            (NodeId::Name(_, _), NodeId::U64(_)) => false,
+        }
     }
 }
 
 impl std::fmt::Display for NodeId<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
        match self {
-            NodeId::Name(name) =>  f.write_fmt(format_args!("NodeName(\"{}\")", name)),
+            NodeId::Name(_, name) =>  f.write_fmt(format_args!("NodeName(\"{}\")", name)),
             NodeId::U64(id) =>  f.write_fmt(format_args!("NodeId({})", id)),
             NodeId::Hash(id) =>  f.write_fmt(format_args!("NodeName({})", id)),
         }
@@ -200,7 +187,7 @@ impl NodeId<'_> {
 impl From<NodeId<'_>> for bevy::asset::HandleId {
     fn from(value: NodeId) -> Self {
         match value {
-            NodeId::Name(name) => bevy::asset::HandleId::Id(NodeId::FROM_NAME, NodeId::hash_name(&name)),
+            NodeId::Name(id, _) => bevy::asset::HandleId::Id(NodeId::FROM_NAME, id),
             NodeId::U64(id) => bevy::asset::HandleId::Id(NodeId::FROM_ID, id),
             NodeId::Hash(id) => bevy::asset::HandleId::Id(NodeId::FROM_NAME, id),
         }
@@ -235,14 +222,15 @@ impl NodeId<'_> {
 
 impl<'a> NodeId<'a> {
     pub fn from_name(name: impl Into<Cow<'a, str>>) -> NodeId<'a> {
-        NodeId::Name(name.into())
+        let name = name.into();
+        NodeId::Name(get_hash(&name), name)
     }
 }
 
 impl<'a> NodeId<'a> {
     pub fn to_static(&self) -> NodeId<'static> {
         match self {
-            NodeId::Name(name) => NodeId::Hash(NodeId::hash_name(name)),
+            NodeId::Name(id, name) => NodeId::Hash(NodeId::hash_name(name)),
             NodeId::U64(id) => NodeId::U64(*id),
             NodeId::Hash(id) => NodeId::Hash(*id),
         }

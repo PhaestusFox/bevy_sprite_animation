@@ -1,7 +1,7 @@
 0.3 -> 0.4
 Changed NodeId to Enum from newtype u64
 Changed Attribute to Enum from newtype u64
-Changed Animation State to use Box<dyn Any> rather then Vec<u8>
+Changed Animation State to use Box<dyn Reflect> rather then Vec<u8>
 Removed need for Attribute types to impl serde
 Moved loading of nodes inside AssetServer
 Removed NodeLoader trait in faver of LoadNode trait
@@ -9,3 +9,4 @@ Changed to using #[reflect(LoadNode)] rather then custom loader container
 Changed to Regituing nodes in AppTypeRegiustry rather then on AnimationTree
 Removed AnimationTree
 Added Index Helper for State
+Added Debug to NodeTrait auto impl to print the nodes name
