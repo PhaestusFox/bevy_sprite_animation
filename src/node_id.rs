@@ -188,8 +188,8 @@ impl Default for NodeId<'_> {
 }
 
 impl NodeId<'_> {
-    const FROM_ID: uuid::Uuid = uuid::uuid!("8ec27710-7e5d-4f0c-864a-49e403dad6a1");
-    const FROM_NAME: uuid::Uuid = uuid::uuid!("559dd81c-ec17-4c83-b3f2-eb7471d64d76");
+    pub(crate) const FROM_ID: uuid::Uuid = uuid::uuid!("8ec27710-7e5d-4f0c-864a-49e403dad6a1");
+    pub(crate) const FROM_NAME: uuid::Uuid = uuid::uuid!("559dd81c-ec17-4c83-b3f2-eb7471d64d76");
 }
 
 impl From<NodeId<'_>> for bevy::asset::HandleId {
@@ -216,7 +216,7 @@ impl std::str::FromStr for NodeId<'_> {
     }
 }
 
-impl NodeId<'_> {
+impl NodeId<'static> {
     pub fn from_u64(id: u64) -> Self {
         NodeId::U64(id)
     }
@@ -232,7 +232,7 @@ impl<'a> NodeId<'a> {
 impl<'a> NodeId<'a> {
     pub fn to_static(&self) -> NodeId<'static> {
         match self {
-            NodeId::Name(id, name) => NodeId::Hash(get_hash(name)),
+            NodeId::Name(id, _) => NodeId::Hash(*id),
             NodeId::U64(id) => NodeId::U64(*id),
             NodeId::Hash(id) => NodeId::Hash(*id),
             NodeId::Handle(id) => NodeId::Handle(id.clone()),
@@ -254,4 +254,24 @@ impl bevy_inspector_egui::Inspectable for NodeId {
         ui.label(self.to_string());
         false
     }
+}
+
+impl NodeId<'_> {
+    #[cfg(feature = "dot")]
+    pub fn dot(&self, out: &mut String) {
+        match self {
+            NodeId::Handle(id) => {
+                match id.id() {
+                    HandleId::AssetPathId(id) => {
+                        let name = format!("h_{:?}", id.source_path_id()).replace("SourcePathId(", "").replace(')', "");
+                        out.push_str(&name)
+                    },
+                    HandleId::Id(_, _) => crate::dot::handle_to_node(id.id()).dot(out),
+                };
+            },
+            NodeId::U64(id) => out.push_str(&format!("u_{}", id)),
+            NodeId::Name(id, _) |
+            NodeId::Hash(id) => out.push_str(&format!("n_{}", id)),
+        }
+    } 
 }

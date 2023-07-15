@@ -7,8 +7,6 @@ pub trait AnimationNodeTrait: Send + Sync + Any + AnimationNodeAsAny
 {
     fn run(&self, state: &mut super::state::AnimationState) -> Result<NodeResult, RunError>;
     fn name(&self) -> &str;
-    #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool;
     fn id(&self) -> NodeId<'_>;
     #[cfg(feature = "serialize")]
     fn serialize(&self, data: &mut String, asset_server: &AssetServer) -> Result<(), Error> {
@@ -24,6 +22,13 @@ pub trait AnimationNodeTrait: Send + Sync + Any + AnimationNodeAsAny
         f.write_str("You can impl AnimationNodeTrait::debug for more info\n")?;
         f.write_str("Node: \n")?;
         f.write_str(self.name())
+    }
+
+    #[cfg(feature = "dot")]
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &AssetServer) {
+        this.dot(out);
+        out.push(';');
+        out.push('\n');
     }
 }
 

@@ -143,6 +143,26 @@ impl AnimationNodeTrait for ScriptNode {
         data.push_str("),\n\t");
         Ok(())
     }
+
+    #[cfg(feature = "dot")]
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &AssetServer) {
+        this.dot(out);
+        out.push_str(&format!(" [label=\"{}\"];\n", self.name()));
+        if let Some(fallback) = &self.fallback {
+            this.dot(out);
+            out.push_str(" -> ");
+            fallback.dot(out);
+            out.push_str(&format!("[label=\"Fallback\"];\n"));
+        }
+        for token in self.tokens.iter() {
+            if let Token::Return(id) = token {
+                this.dot(out);
+                out.push_str(" -> ");
+                id.dot(out);
+                out.push_str(&format!(";\n"));
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

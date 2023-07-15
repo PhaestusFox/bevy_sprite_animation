@@ -106,6 +106,18 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
     fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self, f)
     }
+
+    #[cfg(feature = "dot")]
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+        this.dot(out);
+        out.push_str(&format!(" [label=\"{}\"];\n", self.name));
+        for (index, next) in self.pairs.iter() {
+            this.dot(out);
+            out.push_str(" -> ");
+            next.dot(out);
+            out.push_str(&format!("[label=\"{:?}\"];\n", index));
+        }
+    }
 }
 
 use bevy::reflect::Reflect;

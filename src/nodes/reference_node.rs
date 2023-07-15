@@ -14,7 +14,7 @@ impl ReferenceNode {
 
 impl AnimationNodeTrait for ReferenceNode {
     fn run(&self, _: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
-        Err(RunError::Custom("Reference Node should not be part of the tree".to_string()))
+        Err(RunError::Custom("Reference Node should not be root of a tree".to_string()))
     }
 
     fn name(&self) -> &str {
@@ -28,5 +28,19 @@ impl AnimationNodeTrait for ReferenceNode {
 
     fn node_type(&self) -> String {
         "Reference Node".to_string()
+    }
+    
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+        this.dot(out);
+        out.push_str(&format!(" [label={:?}];\n", self.1));
+        this.dot(out);
+        out.push_str(" [color=brown];\n");
+        for node in self.0.iter() {
+            this.dot(out);
+            out.push_str(" -> ");
+            crate::dot::handle_to_node(node.id()).dot(out);
+            out.push(';');
+            out.push('\n');
+        }
     }
 }

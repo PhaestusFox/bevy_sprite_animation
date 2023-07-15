@@ -107,6 +107,16 @@ impl AnimationNodeTrait for ScaleNode {
     fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self, f)
     }
+
+    #[cfg(feature = "dot")]
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+        this.dot(out);
+        out.push_str(&format!(" [label=\"{}\"];\n", self.name));
+        this.dot(out);
+        out.push_str(" -> ");
+        self.next.dot(out);
+        out.push_str(&format!("[label=\"{}\"];\n", self.scale));
+    }
 }
 
 #[cfg(feature = "serialize")]

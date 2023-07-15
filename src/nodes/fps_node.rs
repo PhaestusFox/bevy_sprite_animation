@@ -100,6 +100,16 @@ impl AnimationNodeTrait for FPSNode {
     fn id(&self) -> NodeId {
         NodeId::from_name(&self.name)
     }
+
+    #[cfg(feature = "dot")]
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+        this.dot(out);
+        out.push_str(&format!(" [label=\"{}\"];\n", self.name));
+        this.dot(out);
+        out.push_str(" -> ");
+        self.then.dot(out);
+        out.push_str(";\n");
+    }
 }
 
 #[cfg(feature = "serialize")]

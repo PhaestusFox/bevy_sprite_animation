@@ -16,8 +16,9 @@ lazy_static = "1.4.0"
 futures-lite = "1"
 uuid = "*"
 strum_macros = "*"
+opener = {version = "*", optional = true}
 
 [features]
-default = ["serialize"]
+default = ["serialize", "dot"]
 serialize = ["ron", "serde"]
-dot = []
+dot = ["opener"]

@@ -127,6 +127,25 @@ impl AnimationNodeTrait for VariableNode {
     fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Debug::fmt(&self, f)
     }
+
+    #[cfg(feature = "dot")]
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+        this.dot(out);
+        out.push_str(&format!(" [label=\"{}\"];\n", self.name));
+        for (i, (index, len)) in self.frames.iter().enumerate() {
+            this.dot(out);
+            out.push_str(" -> ");
+            let h = crate::dot::handle_to_node(index.id());
+            h.dot(out);
+            out.push_str(&format!(" [label=\"({}, {})\"];\n", i, len));
+            if let Some(path) = asset_server.get_handle_path(index) {
+                h.dot(out);
+                out.push_str(&format!(" [label={:?}];\n", path.path()));
+                h.dot(out);
+                out.push_str(" [color=green];\n");
+            }
+        }
+    }
 }
 
 impl LoadNode for VariableNode {

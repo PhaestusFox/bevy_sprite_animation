@@ -1,17 +1,27 @@
 [
-ScriptNode( #id Id(13)
+ScriptNode(
+	#name "Stop Stand Up F"
+	#id Id(13)
 	#fallback Id(3)
 	if Index("Stand") >= 6 set Attribute("ZombieState") Ron("Idle") return Id(8) ),
-ScriptNode( #id Id(12)
+ScriptNode(
+	#name "Stop Stand Up B"
+	#id Id(12)
 	#fallback Id(3)
 	if Index("Stand") >= 6 set Attribute("ZombieState") Ron("Idle") return Id(10) ),
-ScriptNode( #id Id(11)
+ScriptNode(
+	#name "Stop Attack"
+	#id Id(11)
 	#fallback Id(3)
 	if Index("Attack") >= 10 set Attribute("ZombieState") Ron("Idle") return Id(6) ),
-ScriptNode( #id Id(14)
+ScriptNode(
+	#name "End Fall F"
+	#id Id(14)
 	#fallback Id(3)
 	if Index("Fall") >= 5 set Attribute("ZombieState") Ron("LayingF") return Id(7) ),
-ScriptNode( #id Id(15)
+ScriptNode(
+	#name "End Fall B"
+	#id Id(15)
 	#fallback Id(3)
 	if Index("Fall") >= 6 set Attribute("ZombieState") Ron("LayingB") return Id(9) ),
 Id(1):MatchNode<ZState>(

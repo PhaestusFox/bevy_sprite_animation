@@ -217,8 +217,8 @@ fn setup_animations(
     ZState::Attacking,
     start,
     player::Player,
-    StartNode::from_u64(0),
+    StartNode::from_handle(test_handle),
     ));
 
-    commands.insert_resource(Handles(vec![test_handle, tree_handle]));
+    commands.insert_resource(Handles(vec![tree_handle]));
 }

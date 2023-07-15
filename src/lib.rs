@@ -32,6 +32,9 @@ pub mod system_set;
 
 pub mod node_id;
 
+#[cfg(feature = "dot")]
+pub mod dot;
+
 #[cfg(test)]
 mod test{
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
@@ -60,6 +63,8 @@ impl<const MAX: usize> Plugin for SpriteAnimationPlugin<MAX> {
         app.add_systems(Last, state::clear_unchanged_temp);
         app.configure_sets(Update, (AnimationSet::PreUpdate, AnimationSet::Update, AnimationSet::PostUpdate).chain());
         nodes::type_registration::registor_nodes(app);
+        #[cfg(feature = "dot")]
+        app.add_systems(Update, dot::write_dot);
         #[cfg(feature = "bevy-inspector-egui")]
         bevy_inspector_egui::RegisterInspectable::register_inspectable::<StartNode>(app);
     }
@@ -103,10 +108,20 @@ impl<'a> AnimationNodeTrait for AnimationNode {
     fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.debug(f)
     }
+    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &AssetServer) {
+        self.0.dot(this, out, asset_server)
+    }
 }
 
 #[derive(Component)]
 pub struct StartNode(pub NodeId<'static>);
+
+impl StartNode {
+    #[cfg(feature = "dot")]
+    fn dot(&self, out: &mut String) {
+        self.0.dot(out)
+    } 
+}
 
 #[cfg(feature = "bevy-inspector-egui")]
 impl bevy_inspector_egui::Inspectable for StartNode {
@@ -123,6 +138,12 @@ impl bevy_inspector_egui::Inspectable for StartNode {
             }
         });
         edit
+    }
+}
+
+impl std::fmt::Display for StartNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(&self.0, f)
     }
 }
 
