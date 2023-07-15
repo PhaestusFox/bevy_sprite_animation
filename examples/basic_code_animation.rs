@@ -7,24 +7,19 @@ fn main() {
     .add_plugins(DefaultPlugins.set(ImagePlugin {
         default_sampler: bevy::render::texture::ImageSampler::nearest_descriptor(),
     }))
-    .add_plugins(SpriteAnimationPlugin)
+    // add the plugin to our game, the 10 is the max number of nodes in a single chain
+    // this provents the app getting stuck in a loop
+    .add_plugins(SpriteAnimationPlugin::<10>)
     .add_systems(Startup, setup_animations)
     .run()
 }
 
-#[derive(Component, Default, Reflect)]
-#[reflect(Component)]
-struct Zombie;
-
 fn setup_animations(
     mut commands: Commands,
-    mut nodes: ResMut<AnimationNodeTree>,
     asset_server: Res<AssetServer>,
-    mut assets: ResMut<Assets<AnimationNode>>,
+    mut nodes: ResMut<Assets<AnimationNode>>,
 ) {
     commands.spawn(Camera2dBundle::default());
-
-    let nodes = nodes.as_mut();
 
     let mut images = Vec::new();
     // Load all the images
@@ -32,10 +27,8 @@ fn setup_animations(
         images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
     }
 
-    let start = NodeId::from_u64(0x1);
-
-    // Add a new IndexNode with a custom id of 0x1
-    let index = assets.set(NodeId::from_u64(0x1), AnimationNode::new(
+    // Add a new IndexNode
+    let index = nodes.add(AnimationNode::new(
         bevy_sprite_animation::nodes::IndexNode::new(
         // this node will be called test
         "test",
@@ -44,17 +37,16 @@ fn setup_animations(
         // we want it to loop after it gets to the end
         true)
     ));
-    // Add a node with a self generated id
-    let fps_start = assets.set(start.to_static(), AnimationNode::new(
+    // Add a node with a auto generated id
+    let fps_start = nodes.add(AnimationNode::new(
         bevy_sprite_animation::nodes::FPSNode::new(
         // this node is call fps
         "fps",
         // it will change frames 7 times a seconed
         7,
-        // it will go to the frame we just inserted with an id of 0x1
-        NodeId::from_u64(0x1))
+        // it will go to the IndexNode we just inserted
+        NodeId::Handle(index))
     ));
-
 
     // spawn SpriteBundle
     commands.spawn((SpriteBundle{
@@ -62,10 +54,8 @@ fn setup_animations(
         sprite: Sprite{custom_size: Some(Vec2::splat(1000.)), ..Default::default()},
         ..Default::default()
     },
-    // add animation flag
-    Zombie,
-    // add default AnimationState
+    // add AnimationState
     AnimationState::default(),
     // add a startnode to our entity with the fps node as its first node
-    StartNode(start)));
+    StartNode::from_handle(fps_start)));
 }

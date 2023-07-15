@@ -91,6 +91,10 @@ async fn load_tree<'a,'b: 'a>(loader: &BevyNodeLoader, bytes: &'a [u8], load_con
             continue;},
         };
         let id = if let Some(id) = id {id} else {node.id()};
+        if !is_tree {
+            load_context.set_default_asset(LoadedAsset::new(AnimationNode::new(node)).with_dependencies(dependencies));
+            return Ok(());
+        }
         reference.0.push(load_context.get_handle(id.clone()));
         loader.1.send((id.to_static(), node)).or(Err(LoadError::ChannelError))?;
         let _ = input.extract_till(',');

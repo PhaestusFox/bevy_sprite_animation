@@ -1,4 +1,4 @@
-use crate::{prelude::get_hasher, utils::get_hash, AnimationNode};
+use crate::{utils::get_hash, AnimationNode};
 
 #[derive(Debug, Reflect)]
 pub enum NodeId<'a> {
@@ -53,7 +53,7 @@ impl serde::Serialize for NodeId<'_> {
             NodeId::Name(_, name) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), name),
             NodeId::U64(id) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Id as u32, Variant::Id.as_ref(), id),
             NodeId::Hash(hash) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), hash),
-            NodeId::Handle(h) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Handle as u32, Variant::Handle.as_ref(), h),
+            NodeId::Handle(h) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Handle as u32, Variant::Handle.as_ref(), &h.id()),
         }
     }
 }
@@ -203,7 +203,7 @@ impl From<NodeId<'_>> for bevy::asset::HandleId {
     }
 }
 
-use std::{borrow::Cow, hash::Hasher};
+use std::borrow::Cow;
 
 use bevy::{reflect::Reflect, prelude::Handle, asset::HandleId};
 

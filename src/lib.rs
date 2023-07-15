@@ -140,6 +140,9 @@ impl StartNode {
     pub fn from_name(name: impl Into<std::borrow::Cow<'static, str>>) -> StartNode {
         StartNode(NodeId::from_name(name))
     }
+    pub fn from_handle(handle: Handle<AnimationNode>) -> StartNode {
+        StartNode(NodeId::Handle(handle))
+    }
 }
 
 fn animation_system<const MAX: usize>(
