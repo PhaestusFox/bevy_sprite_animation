@@ -94,19 +94,21 @@ mod player {
         }
         let (mut zstate, mut animation) = player.single_mut();
         for key in input.get_just_pressed() {
-            match key {
-                KeyCode::A | KeyCode::Left => {
+            match (key, *zstate) {
+                (KeyCode::A, ZState::Walking) | (KeyCode::Left, ZState::Walking) |
+                (KeyCode::A, ZState::Idle) | (KeyCode::Left, ZState::Idle) => {
                     if zstate.as_ref() == &ZState::Walking || zstate.as_ref() == &ZState::Idle {
                         animation.set_attribute(Attribute::FlipX, true);
                     }
                 },
-                KeyCode::D | KeyCode::Right => {
+                (KeyCode::D, ZState::Walking) | (KeyCode::Right, ZState::Walking) |
+                (KeyCode::D, ZState::Idle) | (KeyCode::Right, ZState::Idle) => {
                     if zstate.as_ref() == &ZState::Walking || zstate.as_ref() == &ZState::Idle {
-                        animation.set_attribute(Attribute::FlipY, false);
+                        animation.set_attribute(Attribute::FlipX, false);
                     }
                 },
-                KeyCode::ShiftLeft | KeyCode::ShiftRight | KeyCode::Up => {
-                    *zstate = match zstate.as_ref() {
+                (KeyCode::Up, state) => {
+                    *zstate = match state {
                         ZState::Idle => {ZState::Walking},
                         ZState::Walking => {ZState::Running},
                         ZState::Running => {ZState::Running},
@@ -120,9 +122,10 @@ mod player {
                         ZState::LayingF => {ZState::StandF},
                     }
                 },
-                KeyCode::Down | KeyCode::ControlLeft | KeyCode::ControlRight => {
-                    *zstate = match zstate.as_ref() {
-                        ZState::Idle => {ZState::FallF},
+                (KeyCode::Down, state) => {
+                    let facing = *animation.attribute::<bool>(&Attribute::FlipX);
+                    *zstate = match state {
+                        ZState::Idle => {if facing { ZState::FallF } else {ZState::FallB}},
                         ZState::Walking => {ZState::Idle},
                         ZState::Running => {ZState::Walking},
                         ZState::Attacking => {ZState::Attacking},
@@ -137,16 +140,15 @@ mod player {
                         ZState::LayingF => {ZState::LayingF},
                     }
                 },
-                KeyCode::Space => {
+                (KeyCode::Space, ZState::Idle) | (KeyCode::Space, ZState::Walking) => {
                     *zstate = ZState::Attacking;
                 },
-                KeyCode::T => {
-                    *zstate = ZState::Test;
+                (KeyCode::NumpadSubtract, state) => {
+                    println!("{:?}", state);
                 }
                 _ => {}
             }
         }
-        animation.set_attribute(local[0].clone(), *zstate);
     }
 }
 

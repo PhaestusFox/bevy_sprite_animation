@@ -500,4 +500,21 @@ fn test_hash() {
     Attribute::Default.hash(&mut hash);
     let hash_0_1 = hash.finish();
     assert_ne!(hash_0, hash_0_1);
+
+    // core vs core
+    let mut hash = get_hasher();
+    Attribute::Default.hash(&mut hash);
+    let hash_0 = hash.finish();
+    let mut hash = get_hasher();
+    Attribute::Default.hash(&mut hash);
+    let hash_0_1 = hash.finish();
+    assert_eq!(hash_0, hash_0_1);
+
+    let mut hash = get_hasher();
+    Attribute::FlipX.hash(&mut hash);
+    let hash_0 = hash.finish();
+    let mut hash = get_hasher();
+    Attribute::Default.hash(&mut hash);
+    let hash_0_1 = hash.finish();
+    assert_ne!(hash_0, hash_0_1);
 }

@@ -134,6 +134,12 @@ pub enum StateError {
     NotFound,
     #[error("Attribute has a diffrent type")]
     WrongType,
+    #[cfg(feature = "ron")]
+    #[error("Failed To set by ron")]
+    SetByRon(#[from] ron::de::Error),
+    #[cfg(feature = "ron")]
+    #[error("{0} dose not #[reflect(Deserialise)]")]
+    NotRegistered(&'static str)
 }
 
 #[derive(Debug, Error)]

@@ -11,9 +11,7 @@ impl AnimationNodeTrait for ScriptNode {
         while index < self.tokens.len() {
             match &self.tokens[index] {
                 Token::If => {
-                    println!("running condishion {:?} {:?} {:?}", self.tokens[index + 1], &self.tokens[index + 2], &self.tokens[index + 3]);
                     if if_condishion(state, &self.tokens[index + 1], &self.tokens[index + 2], &self.tokens[index + 3]) {
-                        println!("Conditon true");
                         index += 4;
                     } else {
                         index += 7;
@@ -43,6 +41,14 @@ impl AnimationNodeTrait for ScriptNode {
                                         crate::error::StateError::WrongType => RunError::Custom(
                                             format!("ScriptNode: {} has the wrong type?\n
                                             this is a bug, the type shoud be decided by the one already there", key)
+                                        ),
+                                        crate::error::StateError::SetByRon(e) => RunError::Custom(
+                                            format!("ScriptNode: {} Ron Failed?\n
+                                            {:?}", key, e)
+                                        ),
+                                        crate::error::StateError::NotRegistered(e) => RunError::Custom(
+                                            format!("ScriptNode: {} type not reflect\n
+                                            {:?}", key, e)
                                         ),
                                     });
                                 }
@@ -386,8 +392,8 @@ impl ScriptNode {
                 continue;
             }
             if word.starts_with("Ron(") {
-                let mut ron = String::from(&word[4..]);
-                while ron.matches('(').collect::<Vec<&str>>().len() != ron.matches(')').collect::<Vec<&str>>().len() - 1 {
+                let mut ron = String::from(&word[5..]);
+                while ron.matches('(').collect::<Vec<&str>>().len() > ron.matches(')').collect::<Vec<&str>>().len() {
                     ron.push_str(words.next().expect("there to be another word"));
                 }
                 if !ron.ends_with(')') {
@@ -398,6 +404,7 @@ impl ScriptNode {
                 {
                     warn!("using ron(_) without ron feature enabled\n");
                 }
+                ron.pop();
                 ron.pop();
                 tokens.push(Token::Ron(ron));
                 continue;

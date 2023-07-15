@@ -1,7 +1,8 @@
-use crate::{prelude::get_hasher, utils::get_hash};
+use crate::{prelude::get_hasher, utils::get_hash, AnimationNode};
 
 #[derive(Debug, Reflect)]
 pub enum NodeId<'a> {
+    Handle(Handle<AnimationNode>),
     Name(u64, Cow<'a, str>),
     U64(u64),
     Hash(u64),
@@ -20,12 +21,17 @@ impl Ord for NodeId<'_> {
             (NodeId::Name(_, name), NodeId::Name(_, name1)) => name.cmp(name1),
             (NodeId::Name(_, _), NodeId::U64(_)) |
             (NodeId::Hash(_), NodeId::U64(_)) |
+            (NodeId::Name(_, _), NodeId::Handle(_)) |
+            (NodeId::U64(_), NodeId::Handle(_)) |
+            (NodeId::Hash(_), NodeId::Handle(_)) |
             (NodeId::Name(_, _), NodeId::Hash(_)) => Ordering::Greater,
-            (NodeId::Hash(_), NodeId::Name(_, _)) |
-            (NodeId::U64(_), NodeId::Hash(_)) |
-            (NodeId::U64(_), NodeId::Name(_, _)) => Ordering::Less,
             (NodeId::Hash(a), NodeId::Hash(b)) |
             (NodeId::U64(a), NodeId::U64(b)) => a.cmp(b),
+            (NodeId::Handle(a), NodeId::Handle(b)) => a.cmp(b),
+            (NodeId::Hash(_), NodeId::Name(_, _)) |
+            (NodeId::U64(_), NodeId::Hash(_)) |
+            (NodeId::U64(_), NodeId::Name(_, _)) |
+            (NodeId::Handle(_), _) => Ordering::Less,
         }
     }
 }
@@ -47,6 +53,7 @@ impl serde::Serialize for NodeId<'_> {
             NodeId::Name(_, name) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), name),
             NodeId::U64(id) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Id as u32, Variant::Id.as_ref(), id),
             NodeId::Hash(hash) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), hash),
+            NodeId::Handle(h) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Handle as u32, Variant::Handle.as_ref(), h),
         }
     }
 }
@@ -55,6 +62,7 @@ impl serde::Serialize for NodeId<'_> {
 enum Variant {
     Name,
     Id,
+    Handle,
 }
 
 struct NodeVisitor;
@@ -71,6 +79,7 @@ impl<'de> serde::de::Visitor<'de> for NodeVisitor {
         match v.0 {
             Variant::Name => v.1.newtype_variant_seed(NodeVisitor),
             Variant::Id => Ok(NodeId::U64(v.1.newtype_variant::<u64>()?)),
+            Variant::Handle => Ok(NodeId::Handle(Handle::weak(v.1.newtype_variant::<HandleId>()?))),
         }
     }
 
@@ -155,10 +164,8 @@ impl PartialEq for NodeId<'_> {
             (NodeId::Name(id, _), NodeId::Hash(id1)) |
             (NodeId::Hash(id), NodeId::Hash(id1)) |
             (NodeId::Hash(id), NodeId::Name(id1, _)) => id == id1,
-            (NodeId::U64(_), NodeId::Name(_, _)) |
-            (NodeId::U64(_), NodeId::Hash(_)) |
-            (NodeId::Hash(_), NodeId::U64(_)) |
-            (NodeId::Name(_, _), NodeId::U64(_)) => false,
+            (NodeId::Handle(h), NodeId::Handle(h1)) => h == h1,
+            _ => false
         }
     }
 }
@@ -169,6 +176,7 @@ impl std::fmt::Display for NodeId<'_> {
             NodeId::Name(_, name) =>  f.write_fmt(format_args!("NodeName(\"{}\")", name)),
             NodeId::U64(id) =>  f.write_fmt(format_args!("NodeId({})", id)),
             NodeId::Hash(id) =>  f.write_fmt(format_args!("NodeName({})", id)),
+            NodeId::Handle(_) => f.write_str("NodeHandle()"),
         }
     }
 }
@@ -190,13 +198,14 @@ impl From<NodeId<'_>> for bevy::asset::HandleId {
             NodeId::Name(id, _) => bevy::asset::HandleId::Id(NodeId::FROM_NAME, id),
             NodeId::U64(id) => bevy::asset::HandleId::Id(NodeId::FROM_ID, id),
             NodeId::Hash(id) => bevy::asset::HandleId::Id(NodeId::FROM_NAME, id),
+            NodeId::Handle(handle) => handle.id(),
         }
     }
 }
 
 use std::{borrow::Cow, hash::Hasher};
 
-use bevy::reflect::Reflect;
+use bevy::{reflect::Reflect, prelude::Handle, asset::HandleId};
 
 impl std::str::FromStr for NodeId<'_> {
     type Err = ron::error::SpannedError; //todo!
@@ -211,13 +220,6 @@ impl NodeId<'_> {
     pub fn from_u64(id: u64) -> Self {
         NodeId::U64(id)
     }
-
-    pub fn hash_name<T: AsRef<str>>(name: T) -> u64 {
-        let mut hasher = get_hasher();
-        let name = name.as_ref();
-        std::hash::Hash::hash(name, &mut hasher);
-        hasher.finish()
-    }
 }
 
 impl<'a> NodeId<'a> {
@@ -230,9 +232,10 @@ impl<'a> NodeId<'a> {
 impl<'a> NodeId<'a> {
     pub fn to_static(&self) -> NodeId<'static> {
         match self {
-            NodeId::Name(id, name) => NodeId::Hash(NodeId::hash_name(name)),
+            NodeId::Name(id, name) => NodeId::Hash(get_hash(name)),
             NodeId::U64(id) => NodeId::U64(*id),
             NodeId::Hash(id) => NodeId::Hash(*id),
+            NodeId::Handle(id) => NodeId::Handle(id.clone()),
         }
     }
 }

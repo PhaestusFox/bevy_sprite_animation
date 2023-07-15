@@ -119,9 +119,9 @@ impl AnimationState {
     pub(crate) fn set_from_ron(&mut self, attribute: &Attribute, s: &str) -> Result<(), StateError> {
         let Some(main) = self.data.get_mut(attribute) else {return Err(StateError::NotFound);};
         let data = main.get_registration();
-        let data = data.data::<ReflectDeserialize>().expect("Type Regiestese ReflectDeserialize");
-        let mut deserializer = ron::Deserializer::from_str(s).expect("IDK");
-        let val = data.deserialize(&mut deserializer).expect("IDK");
+        let Some(data) = data.data::<ReflectDeserialize>() else {return Err(StateError::NotRegistered(data.type_name()));};
+        let mut deserializer = ron::Deserializer::from_str(s).expect("Ron To Work");
+        let val = data.deserialize(&mut deserializer)?;
         main.set(val).expect("Same Type");
         Ok(())
     }
