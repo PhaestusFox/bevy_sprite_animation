@@ -266,7 +266,7 @@ impl NodeId<'_> {
                         let name = format!("h_{:?}", id.source_path_id()).replace("SourcePathId(", "").replace(')', "");
                         out.push_str(&name)
                     },
-                    HandleId::Id(_, _) => crate::dot::handle_to_node(id.id()).dot(out),
+                    HandleId::Id(_, _) => handle_to_node(id.id()).dot(out),
                 };
             },
             NodeId::U64(id) => out.push_str(&format!("u_{}", id)),
@@ -274,4 +274,15 @@ impl NodeId<'_> {
             NodeId::Hash(id) => out.push_str(&format!("n_{}", id)),
         }
     } 
+}
+
+pub (crate) fn handle_to_node(handle: HandleId) -> NodeId<'static> {
+    match handle {
+        HandleId::Id(uu, id) => if uu == NodeId::FROM_NAME {
+            NodeId::Hash(id)
+        } else {
+            NodeId::U64(id)
+        },
+        HandleId::AssetPathId(_) => NodeId::Handle(Handle::weak(handle)),
+    }
 }

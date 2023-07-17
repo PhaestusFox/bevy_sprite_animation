@@ -38,7 +38,7 @@ impl AnimationNodeTrait for ReferenceNode {
         for node in self.0.iter() {
             this.dot(out);
             out.push_str(" -> ");
-            crate::dot::handle_to_node(node.id()).dot(out);
+            handle_to_node(node.id()).dot(out);
             out.push(';');
             out.push('\n');
         }

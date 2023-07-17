@@ -135,7 +135,7 @@ impl AnimationNodeTrait for VariableNode {
         for (i, (index, len)) in self.frames.iter().enumerate() {
             this.dot(out);
             out.push_str(" -> ");
-            let h = crate::dot::handle_to_node(index.id());
+            let h = handle_to_node(index.id());
             h.dot(out);
             out.push_str(&format!(" [label=\"({}, {})\"];\n", i, len));
             if let Some(path) = asset_server.get_handle_path(index) {

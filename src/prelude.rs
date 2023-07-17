@@ -12,3 +12,4 @@ pub use super::SpriteAnimationPlugin;
 pub use super::StartNode;
 pub use super::utils::get_hasher;
 pub use super::error::RunError;
+pub(crate) use crate::node_id::handle_to_node;

@@ -48,7 +48,7 @@ impl<T:MatchType> MatchNode<T> {
 }
 
 impl<T> AnimationNodeTrait for MatchNode<T>
-where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any
+where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::Any + TypePath
 {
     fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
 
@@ -65,7 +65,7 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
     }
 
     fn node_type(&self) -> String {
-        format!("MatchNode<{}>", std::any::type_name::<T>())
+        Reflect::type_name(self).into()
     }
 
     fn name(&self) -> &str {
@@ -120,11 +120,11 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
     }
 }
 
-use bevy::reflect::Reflect;
+use bevy::reflect::{Reflect, TypePath};
 use ron::error::SpannedError;
 
 #[cfg(feature = "serialize")]
-impl<T: MatchType + serde::de::DeserializeOwned> LoadNode for MatchNode<T> {
+impl<T: MatchType + serde::de::DeserializeOwned + TypePath> LoadNode for MatchNode<T> {
     fn load<'b>(s: &str, _: &mut bevy::asset::LoadContext<'b>, _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
         let data = s.trim();
         let data = &data[1..data.len()-1];

@@ -50,17 +50,6 @@ pub fn write_dot(
     open_dot(&string, "AnimationNodeTree").unwrap()
 }
 
-pub (crate) fn handle_to_node(handle: HandleId) -> NodeId<'static> {
-    match handle {
-        HandleId::Id(uu, id) => if uu == NodeId::FROM_NAME {
-            NodeId::Hash(id)
-        } else {
-            NodeId::U64(id)
-        },
-        HandleId::AssetPathId(_) => NodeId::Handle(Handle::weak(handle)),
-    }
-}
-
 fn execute_dot(dot: &str, format: &str) -> Result<Vec<u8>, std::io::Error> {
     let mut child = Command::new("dot")
         .arg("-T")
