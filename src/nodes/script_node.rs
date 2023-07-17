@@ -152,7 +152,7 @@ impl AnimationNodeTrait for ScriptNode {
             this.dot(out);
             out.push_str(" -> ");
             fallback.dot(out);
-            out.push_str(&format!("[label=\"Fallback\"];\n"));
+            out.push_str(&format!("[label=\"Fallback\", color=red];\n"));
         }
         for token in self.tokens.iter() {
             if let Token::Return(id) = token {
