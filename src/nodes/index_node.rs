@@ -18,23 +18,6 @@ pub struct IndexNode{
     index: Attribute,
 }
 
-#[cfg(feature = "bevy-inspector-egui")]
-impl bevy_inspector_egui::Inspectable for IndexNode {
-    type Attributes = ();
-
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
-        let mut edit = false;
-        ui.collapsing("IndexNode", |ui| {
-        ui.horizontal(|ui| {
-            ui.label("Name: ");
-            if ui.text_edit_singleline(&mut self.name).changed() {edit = true;}
-        });
-        if ui.checkbox(&mut self.is_loop, "loop").changed() {edit = true;};
-        });
-        edit
-    }
-}
-
 impl IndexNode {
     #[inline(always)]
     pub fn new(name: &str, frames: &[Handle<Image>], is_loop: bool) -> IndexNode{

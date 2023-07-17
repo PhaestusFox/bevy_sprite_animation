@@ -13,30 +13,12 @@ pub struct FPSNode {
     fps: u32,
     then: NodeId<'static>,
 }
-
 impl crate::serde::LoadNode for FPSNode {
     fn load<'b>(s: &str, _load_context: &mut bevy::asset::LoadContext<'b>, _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
         let node = ron::from_str::<FPSNode>(s)?;
         Ok(AnimationNode::new(node))
     }
 }
-
-#[cfg(feature = "bevy-inspector-egui")]
-impl bevy_inspector_egui::Inspectable for FPSNode {
-    type Attributes = ();
-
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
-        let mut edit = false;
-        ui.collapsing("FPSNode", |ui| {
-            ui.horizontal(|ui| {
-                ui.label("Name: ");
-                if ui.text_edit_singleline(&mut self.name).changed() {edit = true;};
-            });
-        });
-        edit
-    }
-}
-
 
 impl FPSNode {
     pub fn new(name: &str, fps: u32, next: impl Into<NodeId<'static>>) -> FPSNode{

@@ -153,11 +153,16 @@ mod player {
 }
 
 fn main() {
-    App::new()
-    .add_plugins(DefaultPlugins.set(ImagePlugin {
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(ImagePlugin {
         default_sampler: ImageSampler::nearest_descriptor(),
-    }))
-    .add_plugins((animation::YourAnimationPlugin,
+    }));
+    //add the editor if you want it
+    #[cfg(feature = "editor")]
+    app.add_plugins(bevy_editor_pls::EditorPlugin::default());
+
+    //add this plugin
+    app.add_plugins((animation::YourAnimationPlugin,
         SpriteAnimationPlugin::<20>,
         player::Player))
     .add_systems(Startup ,setup_animations)

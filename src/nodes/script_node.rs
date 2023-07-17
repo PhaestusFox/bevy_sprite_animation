@@ -455,15 +455,6 @@ impl ScriptNode {
 
         ScriptNode { tokens, tags, fallback }
     }
-    pub fn make_raw<T: serde::Serialize>(value: &T) -> String {
-        let data = bincode::serialize(value).expect("val to serialize");
-        let mut hex = String::with_capacity(data.len() * 2);
-        for byte in data {
-            hex.push(char::from_digit((byte >> 4) as u32, 16).expect("valid hex digit"));
-            hex.push(char::from_digit((byte & 0xF) as u32, 16).expect("valid hex digit"));
-        }
-        hex
-    }
 }
 
 fn if_condishion(state: &AnimationState, lhs: &Token, op: &Token, rhs: &Token) -> bool {
