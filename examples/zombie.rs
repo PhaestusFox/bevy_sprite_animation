@@ -177,16 +177,22 @@ fn print_tree(
     nodes: Res<Assets<AnimationNode>>,
     roots: Res<Handles>,
     input: Res<Input<KeyCode>>,
+    asset_server: Res<AssetServer>,
 ) {
     if input.just_pressed(KeyCode::F7) {
+        let mut string = String::new();
         for root in &roots.0 {
             let Some(root) = nodes.get(root) else {error!("Node not loaded"); continue;};
+            root.serialize(&mut string, &asset_server).unwrap();
             let Some(root) = root.downcast_ref::<ReferenceNode>() else {error!("Not ReferenceNode"); continue;};
             println!("{:?}", root.1);
             for node in root.iter() {
-                println!("\t{:?}", nodes.get(node));
+                let Some(node) = nodes.get(node) else {continue;};
+                println!("\t{:?}", node);
+                node.serialize(&mut string, &asset_server).unwrap();
             }
             print!("\n");
+            println!("{}", string);
         }
     }
 }

@@ -1,10 +1,15 @@
 use std::path::PathBuf;
 
-use bevy::prelude::Handle;
+use bevy::{prelude::{Handle, warn}, reflect::Reflect};
 
-use crate::{AnimationNode, prelude::*};
+use crate::{AnimationNode, prelude::*, utils::get_node_hash};
 
-pub struct ReferenceNode(pub Vec<Handle<AnimationNode>>, pub PathBuf);
+/// this is used to stop Nodes Unloading as soon as they are loaded drop its handle when you are done with the file it represents
+#[derive(Reflect)]
+pub struct ReferenceNode(
+    pub Vec<Handle<AnimationNode>>,
+    pub PathBuf
+);
 
 impl ReferenceNode {
     pub fn iter(&self) -> impl Iterator<Item = &Handle<AnimationNode>> {
@@ -22,18 +27,18 @@ impl AnimationNodeTrait for ReferenceNode {
     }
 
     fn name(&self) -> &str {
-        "Reference Node;\n
-        this it used to stop Nodes Unloading as soon as they are loaded drop its handle when you are done with the file it represents"
+        "Reference Node"
     }
 
     fn id(&self) -> crate::prelude::NodeId<'_> {
-        crate::prelude::NodeId::from_name("Reference Node Dont Point to Me")
+        crate::prelude::NodeId::from_u64(get_node_hash(&self.1))
     }
 
-    fn node_type(&self) -> String {
-        "Reference Node".to_string()
+    fn set_id(&mut self, _: NodeId<'_>) {
+        warn!("Can't Set Id of a ReferenceNode");
     }
-    
+
+    #[cfg(feature = "dot")]
     fn dot(&self, this: NodeId<'_>, out: &mut String, _: &bevy::prelude::AssetServer) {
         this.dot(out);
         out.push_str(&format!(" [label={:?}];\n", self.1));

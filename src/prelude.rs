@@ -3,13 +3,14 @@ pub use super::error::BevySpriteAnimationError;
 pub use super::node_core::AnimationNodeTrait;
 pub use super::node_id::NodeId;
 pub use super::AnimationNode;
-pub use super::node_core::NodeLoader;
 pub use super::node_core::NodeResult;
 pub use super::nodes::*;
 pub use super::state::AnimationState;
 pub use super::system_set::AnimationSet;
 pub use super::SpriteAnimationPlugin;
 pub use super::StartNode;
-pub use super::utils::get_hasher;
+pub use super::utils::get_node_hash;
 pub use super::error::RunError;
+#[cfg(feature = "serialize")]
+pub use super::serde::ReflectLoadNode;
 pub(crate) use crate::node_id::handle_to_node;

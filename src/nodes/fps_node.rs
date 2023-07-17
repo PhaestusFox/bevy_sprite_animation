@@ -1,14 +1,14 @@
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 use bevy::reflect::ReflectSerialize;
-use crate::error::BevySpriteAnimationError as Error;
 use crate::serde::ReflectLoadNode;
-use crate::node_core::CanLoad;
 use crate::prelude::*;
 
 #[derive(serde::Serialize, serde::Deserialize, Reflect)]
 #[reflect(Serialize, Deserialize, LoadNode)]
 pub struct FPSNode {
+    #[serde(default)]
+    id: Option<NodeId<'static>>,
     name: String,
     fps: u32,
     then: NodeId<'static>,
@@ -41,6 +41,7 @@ impl bevy_inspector_egui::Inspectable for FPSNode {
 impl FPSNode {
     pub fn new(name: &str, fps: u32, next: impl Into<NodeId<'static>>) -> FPSNode{
         FPSNode{
+            id: None,
             name: name.to_string(),
             fps,
             then: next.into(),
@@ -52,12 +53,6 @@ impl FPSNode {
     }
 }
 
-#[cfg(feature = "serialize")]
-impl CanLoad for FPSNode {
-    fn loader() -> Box<dyn NodeLoader> {
-        Box::new(FPSNodeLoader)
-    }
-}
 impl AnimationNodeTrait for FPSNode {
     fn name(&self) -> &str {
         &self.name
@@ -75,30 +70,16 @@ impl AnimationNodeTrait for FPSNode {
         Ok(NodeResult::Next(self.then.to_static()))
     }
 
-    #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool{
-        bevy_inspector_egui::Inspectable::ui(self, ui, (), context)
-    }
-
-    #[cfg(feature = "serialize")]
-    fn serialize(&self, data: &mut String, _asset_server: &bevy::prelude::AssetServer) -> Result<(), Error>
-    {
-        let mut buf =  Vec::new();
-        let pretty = ron::ser::PrettyConfig::default().new_line("\n\t".to_string());
-        let mut serializer = ron::Serializer::new(&mut buf, Some(pretty))?;
-        serde::Serialize::serialize(self, &mut serializer)?;
-        data.push_str(&String::from_utf8_lossy(&buf));
-        data.push(',');
-        data.push('\n');
-        Ok(())
-    }
-
-    fn node_type(&self) -> String {
-        "FPSNode".to_string()
-    }
-
     fn id(&self) -> NodeId {
-        NodeId::from_name(&self.name)
+        if let Some(id) = &self.id {
+            id.to_static()
+        } else {
+            NodeId::from_name(&self.name)
+        }
+    }
+
+    fn set_id(&mut self, id: NodeId<'_>) {
+        self.id = Some(id.to_static());
     }
 
     #[cfg(feature = "dot")]
@@ -109,28 +90,5 @@ impl AnimationNodeTrait for FPSNode {
         out.push_str(" -> ");
         self.then.dot(out);
         out.push_str(";\n");
-    }
-}
-
-#[cfg(feature = "serialize")]
-pub use loader::FPSNodeLoader;
-
-#[cfg(feature = "serialize")]
-mod loader {
-    use crate::node_core::NodeLoader;
-
-    use super::FPSNode;
-
-    pub struct FPSNodeLoader;
-
-    impl NodeLoader for FPSNodeLoader {
-        fn load(&self, data: &str, _asset_server: &bevy::prelude::AssetServer) -> Result<Box<dyn crate::prelude::AnimationNodeTrait>, crate::error::BevySpriteAnimationError> {
-        let node: FPSNode = ron::from_str(data)?;
-        Ok(Box::new(node))
-    }
-
-    fn can_load(&self) -> &[&str] {
-        &["FPSNode"]
-    }
     }
 }

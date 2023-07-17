@@ -1,4 +1,4 @@
-use crate::{utils::get_hash, AnimationNode};
+use crate::{utils::get_node_hash, AnimationNode};
 
 #[derive(Debug, Reflect)]
 pub enum NodeId<'a> {
@@ -86,7 +86,7 @@ impl<'de> serde::de::Visitor<'de> for NodeVisitor {
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
         where
             E: serde::de::Error, {
-        Ok(NodeId::Name(get_hash(&v), v.into()))
+        Ok(NodeId::Name(get_node_hash(&v), v.into()))
     }
 
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
@@ -220,12 +220,15 @@ impl NodeId<'static> {
     pub fn from_u64(id: u64) -> Self {
         NodeId::U64(id)
     }
+    pub fn from_handle(id: impl Into<HandleId>) -> Self {
+        NodeId::Handle(Handle::weak(id.into()))
+    }
 }
 
 impl<'a> NodeId<'a> {
     pub fn from_name(name: impl Into<Cow<'a, str>>) -> NodeId<'a> {
         let name = name.into();
-        NodeId::Name(get_hash(&name), name)
+        NodeId::Name(get_node_hash(&name), name)
     }
 }
 

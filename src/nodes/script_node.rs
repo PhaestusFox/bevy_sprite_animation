@@ -98,15 +98,6 @@ impl AnimationNodeTrait for ScriptNode {
         "unnamed stript; add #name to the first line to add a name"
     }
 
-    #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, _ui: &mut bevy_inspector_egui::egui::Ui, _context: &mut bevy_inspector_egui::Context) -> bool {
-        false
-    }
-
-    fn node_type(&self) -> String {
-        "ScriptNode".to_string()
-    }
-
     fn id(&self) -> NodeId {
         let mut has_name = None;
         for tag in self.tags.iter() {
@@ -122,6 +113,16 @@ impl AnimationNodeTrait for ScriptNode {
         } else {
             panic!()
         }
+    }
+
+    fn set_id(&mut self, new: NodeId<'_>) {
+        for tag in self.tags.iter_mut() {
+            if let Tag::ID(id) = tag {
+                *id = new.to_static();
+                return;
+            }
+        }
+        self.tags.push(Tag::ID(new.to_static()))
     }
 
     fn serialize(&self, data: &mut String, _: &AssetServer) -> Result<(), BevySpriteAnimationError> {

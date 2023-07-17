@@ -11,7 +11,7 @@ pub(crate) mod utils {
         bevy::utils::RandomState::with_seeds(42, 23, 13, 8).build_hasher()
     }
 
-    pub fn get_hash<T: std::hash::Hash>(name: &T) -> u64 {
+    pub fn get_node_hash<T: std::hash::Hash>(name: &T) -> u64 {
         let mut hasher = get_hasher();
         name.hash(&mut hasher);
         hasher.finish()
@@ -72,7 +72,68 @@ impl<const MAX: usize> Plugin for SpriteAnimationPlugin<MAX> {
 
 #[derive(bevy::reflect::TypeUuid, bevy::reflect::TypePath)]
 #[uuid="b30eb8be-06db-4d7c-922d-22767a539ad6"]
-pub struct AnimationNode(pub Box<dyn AnimationNodeTrait>);
+pub struct AnimationNode(
+    pub Box<dyn AnimationNodeTrait>
+);
+
+impl bevy::reflect::Reflect for AnimationNode {
+    fn type_name(&self) -> &str {
+        self.0.type_name()
+    }
+
+    fn get_represented_type_info(&self) -> Option<&'static bevy::reflect::TypeInfo> {
+        self.0.get_represented_type_info()
+    }
+
+    fn into_any(self: Box<Self>) -> Box<dyn std::any::Any> {
+        self.0.into_any()
+    }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self.0.as_any()
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self.0.as_any_mut()
+    }
+
+    fn into_reflect(self: Box<Self>) -> Box<dyn Reflect> {
+        self.0.into_reflect()
+    }
+
+    fn as_reflect(&self) -> &dyn Reflect {
+        self.0.as_reflect()
+    }
+
+    fn as_reflect_mut(&mut self) -> &mut dyn Reflect {
+        self.0.as_reflect_mut()
+    }
+
+    fn apply(&mut self, value: &dyn Reflect) {
+        self.0.apply(value)
+    }
+
+    fn set(&mut self, value: Box<dyn Reflect>) -> Result<(), Box<dyn Reflect>> {
+        self.0.set(value)
+    }
+
+    fn reflect_ref(&self) -> bevy::reflect::ReflectRef {
+        self.0.reflect_ref()
+    }
+
+    fn reflect_mut(&mut self) -> bevy::reflect::ReflectMut {
+        self.0.reflect_mut()
+    }
+
+    fn reflect_owned(self: Box<Self>) -> bevy::reflect::ReflectOwned {
+        self.0.reflect_owned()
+    }
+
+    fn clone_value(&self) -> Box<dyn Reflect> {
+        self.0.clone_value()
+    }
+}
+
 impl AnimationNode {
     pub fn new(node: impl AnimationNodeTrait) -> AnimationNode {
         AnimationNode(Box::new(node))
@@ -85,9 +146,31 @@ impl AnimationNode {
 
 impl Debug for AnimationNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.debug(f)
+        AnimationNodeTrait::debug(self, f)
     }
 }
+
+// impl bevy::reflect::DynamicTypePath for AnimationNode {
+//     fn reflect_type_path(&self) -> &str {
+//         self.0.reflect_type_path()
+//     }
+
+//     fn reflect_short_type_path(&self) -> &str {
+//         self.0.reflect_short_type_path()
+//     }
+
+//     fn reflect_type_ident(&self) -> Option<&str> {
+//         self.0.reflect_type_ident()
+//     }
+
+//     fn reflect_crate_name(&self) -> Option<&str> {
+//         self.0.reflect_crate_name()
+//     }
+
+//     fn reflect_module_path(&self) -> Option<&str> {
+//         self.0.reflect_module_path()
+//     }
+// }
 
 impl<'a> AnimationNodeTrait for AnimationNode {
     fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
@@ -99,17 +182,15 @@ impl<'a> AnimationNodeTrait for AnimationNode {
     fn name(&self) -> &str {
         self.0.name()
     }
-    fn node_type(&self) -> String {
-        self.0.node_type()
-    }
+    #[cfg(feature = "serialize")]
     fn serialize(&self, data: &mut String, asset_server: &AssetServer) -> Result<(), Error> {
         self.0.serialize(data, asset_server)
     }
-    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.debug(f)
-    }
     fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &AssetServer) {
         self.0.dot(this, out, asset_server)
+    }
+    fn set_id(&mut self, id: NodeId<'_>) {
+        self.0.set_id(id)
     }
 }
 

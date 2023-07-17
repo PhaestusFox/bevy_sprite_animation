@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 
 use crate::prelude::*;
-use crate::error::{BevySpriteAnimationError as Error, LoadError};
+use crate::error::LoadError;
 use crate::serde::{LoadNode, ReflectLoadNode};
 
 #[cfg(not(feature = "serialize"))]
@@ -23,6 +23,7 @@ where T:'static + Send + Sync + Eq + serde::de::DeserializeOwned + serde::Serial
 #[derive(Reflect, Debug)]
 #[reflect(LoadNode)]
 pub struct MatchNode<T: MatchType> {
+    id: Option<NodeId<'static>>,
     name: String,
     #[reflect(ignore)]
     pairs: HashMap<T, NodeId<'static>>,
@@ -38,6 +39,7 @@ impl<T:MatchType> MatchNode<T> {
         }
         
         MatchNode {
+            id: None,
             name: name.to_string(),
             pairs,
             check,
@@ -64,47 +66,20 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
         })
     }
 
-    fn node_type(&self) -> String {
-        Reflect::type_name(self).into()
-    }
-
     fn name(&self) -> &str {
         &self.name
     }
 
-    #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _context: &mut bevy_inspector_egui::Context) -> bool {
-        ui.label(format!("MatchNode<{}>({})",std::any::type_name::<T>(), self.name));
-        return false;
-    }
-
-    #[cfg(feature = "serialize")]
-    fn serialize(&self, data: &mut String, _asset_server: &bevy::prelude::AssetServer) -> Result<(), Error> {
-        let pretty = ron::ser::PrettyConfig::new();
-        data.push_str("MatchNode<");
-        data.push_str(std::any::type_name::<T>());
-        data.push_str(">(\n\t");
-        data.push_str("name: \"");
-        data.push_str(self.name());
-        data.push_str("\",\n\tcheck: ");
-        data.push_str(&ron::ser::to_string_pretty(&self.check, pretty.clone())?);
-        data.push_str(",\n\tdefault: ");
-        data.push_str(&ron::ser::to_string_pretty(&self.default, pretty.clone())?);
-        data.push_str(",\n\tpairs: [\n\t");
-        for pair in self.pairs.iter() {
-            data.push_str(&ron::ser::to_string_pretty(&pair, pretty.clone())?);
-            data.push_str(",\n\t");
-        }
-        data.push_str("],\n),");
-        Ok(())
-    }
-
     fn id(&self) -> NodeId {
-        NodeId::from_name(&self.name)
+        if let Some(id) = &self.id {
+            id.to_static()
+        } else {
+            NodeId::from_name(&self.name)
+        }
     }
 
-    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self, f)
+    fn set_id(&mut self, id: NodeId<'_>) {
+        self.id = Some(id.to_static());
     }
 
     #[cfg(feature = "dot")]
@@ -178,6 +153,7 @@ impl<T: MatchType + serde::de::DeserializeOwned + TypePath> LoadNode for MatchNo
         let name = name[1..name.len()-1].to_string();
         let pairs: HashMap<T, NodeId> = pairs.into_iter().collect();
         Ok(AnimationNode::new(MatchNode {
+            id: None,
             name,
             pairs,
             default,

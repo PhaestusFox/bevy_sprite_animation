@@ -7,11 +7,11 @@ use bevy::prelude::Handle;
 use bevy::prelude::Image;
 use bevy::reflect::Reflect;
 use serde::Deserializer;
-use crate::error::BevySpriteAnimationError as Error;
 
 #[derive(Debug, Reflect)]
 #[reflect(LoadNode)]
 pub struct VariableNode{
+    id: Option<NodeId<'static>>,
     name: String,
     frames: Vec<(Handle<Image>, f32)>,
     is_loop: bool,
@@ -38,7 +38,8 @@ impl bevy_inspector_egui::Inspectable for IndexNode {
 impl VariableNode {
     #[inline(always)]
     pub fn new(name: &str, frames: &[(Handle<Image>, f32)], is_loop: bool) -> VariableNode {
-        VariableNode { 
+        VariableNode {
+            id: None,
             name: name.to_string(),
             frames: frames.to_vec(),
             is_loop,
@@ -48,7 +49,8 @@ impl VariableNode {
 
     #[inline(always)]
     pub fn new_with_index(name: &str, frames: &[(Handle<Image>, f32)], is_loop: bool, index: Attribute) -> VariableNode {
-        VariableNode { 
+        VariableNode {
+            id: None,
             name: name.to_string(),
             frames: frames.to_vec(),
             is_loop,
@@ -60,10 +62,6 @@ impl VariableNode {
 impl AnimationNodeTrait for VariableNode {
     fn name(&self) -> &str {
         &self.name
-    }
-
-    fn node_type(&self) -> String {
-        "VariableNode".to_string()
     }
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, RunError> {
@@ -90,42 +88,16 @@ impl AnimationNodeTrait for VariableNode {
         Ok(NodeResult::Done(current.0.clone()))
     }
 
-    #[cfg(feature = "bevy-inspector-egui")]
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, context: &mut bevy_inspector_egui::Context) -> bool{
-        bevy_inspector_egui::Inspectable::ui(self, ui, (), context)
-    }
-
-    #[cfg(feature = "serialize")]
-    fn serialize(&self, data: &mut String, asset_server: &bevy::prelude::AssetServer) -> Result<(), Error>
-    {
-        data.push_str("VariableNode(\n\t");
-        data.push_str("name: \"");
-        data.push_str(&self.name);
-        data.push_str("\",\n\tframes: [\n\t");
-        for (frame, time) in self.frames.iter() {
-            data.push_str("(");
-            if let Some(path) = asset_server.get_handle_path(frame) {
-                data.push_str(path.path().to_str().unwrap())
-            } else {
-                return Err(Error::AssetPathNotFound(frame.clone_weak()));
-            }
-            data.push_str(&format!(", {})", time));
-            data.push_str(",\n\t");
-        }
-        data.push_str("],\n\t");
-        data.push_str(&format!("is_loop: {},\n\t",self.is_loop));
-        data.push_str("index: ");
-        data.push_str(&ron::to_string(&self.index)?);
-        data.push_str(",\n\t),\n");
-        Ok(())
-    }
-
     fn id(&self) -> NodeId {
-        NodeId::from_name(&self.name)
+        if let Some(id) = &self.id {
+            id.to_static()
+        } else {
+            NodeId::from_name(&self.name)
+        }
     }
 
-    fn debug(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        std::fmt::Debug::fmt(&self, f)
+    fn set_id(&mut self, id: NodeId<'_>) {
+        self.id = Some(id.to_static())
     }
 
     #[cfg(feature = "dot")]
@@ -198,6 +170,7 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for VariableLoader<'de, 'b> {
             self.1.push(frame.0.into());
         }
         Ok(VariableNode {
+            id: None,
             frames: handles,
             name,
             is_loop,

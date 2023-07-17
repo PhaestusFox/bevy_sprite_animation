@@ -10,3 +10,5 @@ Changed to Regituing nodes in AppTypeRegiustry rather then on AnimationTree
 Removed AnimationTree
 Added Index Helper for State
 Added Debug to NodeTrait auto impl to print the nodes name
+Changed Node to needing reflect
+Added set_id to allow custom logic on how each node stores it target

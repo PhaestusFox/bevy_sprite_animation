@@ -6,7 +6,7 @@ use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 use bevy::reflect::ReflectSerialize;
 
-use crate::utils::get_hash;
+use crate::utils::get_node_hash;
 
 #[derive(Default, Reflect, PartialOrd, Ord, strum_macros::AsRefStr)]
 #[reflect_value(Serialize, Deserialize)]
@@ -121,7 +121,7 @@ impl Attribute {
         match ron::from_str::<Attribute>(s) {
             Ok(ok) => ok,
             Err(_) => {
-                Attribute::Custom(get_hash(&s), s.to_string().into())
+                Attribute::Custom(get_node_hash(&s), s.to_string().into())
             },
         }
     }
@@ -173,7 +173,7 @@ impl Attribute {
     #[inline(always)]
     pub fn new_index(name: impl Into<Cow<'static, str>>) -> Attribute{
         let name = name.into();
-        Attribute::Index(get_hash(&name), name)
+        Attribute::Index(get_node_hash(&name), name)
     }
 
     /// Returns the Attribute::Custom() for the given name
@@ -184,13 +184,13 @@ impl Attribute {
     #[inline(always)]
     pub fn new_attribute(name: impl Into<Cow<'static, str>>) -> Attribute{
         let name = name.into();
-        Attribute::Custom(get_hash(&name), name)
+        Attribute::Custom(get_node_hash(&name), name)
     }
 
     /// Returns the Attribute::CustomId() for the given name
     /// The Attribute will **not** have a name
     pub fn new_attribute_id<T: Hash>(id: &T) -> Attribute {
-        Attribute::CustomId(get_hash(id))
+        Attribute::CustomId(get_node_hash(id))
     }
 
     /// Will Return the id of an Attribute
@@ -211,7 +211,7 @@ impl Attribute {
     /// Returns the Attribute::IndexId() for the given name
     /// The Attribute will **not** have a name
     pub fn new_index_id<T: Hash>(id: &T) -> Attribute {
-        Attribute::IndexId(get_hash(id))
+        Attribute::IndexId(get_node_hash(id))
     }
     
     /// Returns the name of the Attribute or Index will return None if the name has been errased
@@ -326,8 +326,8 @@ impl<'de> serde::de::Visitor<'de> for AttributeVisitor {
         where
             E: serde::de::Error, {
                 Ok(match self {
-                    AttributeVisitor::Custom => Attribute::Custom(get_hash(&v), v.into()),
-                    AttributeVisitor::Index => Attribute::Index(get_hash(&v), v.into()),
+                    AttributeVisitor::Custom => Attribute::Custom(get_node_hash(&v), v.into()),
+                    AttributeVisitor::Index => Attribute::Index(get_node_hash(&v), v.into()),
                 })
     }
 

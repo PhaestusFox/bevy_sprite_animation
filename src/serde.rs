@@ -16,14 +16,14 @@ fn add_nodes_to_assets(
     node_channel: NonSend<NodeWorldChannel>,
     mut nodes: ResMut<Assets<AnimationNode>>,
 ) {
-    for (id, node) in node_channel.receiver.try_iter() {
-        //the refrence node should have a strong handle
-        let _ = nodes.set(id, node);
+    for node in node_channel.receiver.try_iter() {
+        // the refrence node should have a strong handle
+        let _ = nodes.set(node.id().to_static(), node);
     }
 }
 
 struct NodeWorldChannel {
-    receiver: std::sync::mpsc::Receiver<(NodeId<'static>, AnimationNode)>,
+    receiver: std::sync::mpsc::Receiver<AnimationNode>,
 }
 
 impl FromWorld for NodeWorldChannel {
@@ -37,7 +37,7 @@ impl FromWorld for NodeWorldChannel {
     }
 }
 
-pub(crate) struct BevyNodeLoader(pub AppTypeRegistry, pub std::sync::mpsc::SyncSender<(NodeId<'static>, AnimationNode)>);
+pub(crate) struct BevyNodeLoader(pub AppTypeRegistry, pub std::sync::mpsc::SyncSender<AnimationNode>);
 
 impl AssetLoader for BevyNodeLoader {
     fn extensions(&self) -> &[&str] {
@@ -82,16 +82,21 @@ async fn load_tree<'a,'b: 'a>(loader: &BevyNodeLoader, bytes: &'a [u8], load_con
     while input.peek().is_some() {
         let id = input.extract_id()?;
         input.trim();
-        let node = match load_node(&loader.0, &mut input, load_context, &mut dependencies) {
+        let mut node = match load_node(&loader.0, &mut input, load_context, &mut dependencies) {
             Ok(node) => node,
             Err(e) => {error!("{}", e);
             let _ = input.extract_till(',');
             input.trim();
             continue;},
         };
-        let id = if let Some(id) = id {id} else {node.id()};
-        reference.0.push(load_context.get_handle(id.clone()));
-        loader.1.send((id.to_static(), node)).or(Err(LoadError::ChannelError))?;
+        let id = if let Some(id) = id {
+            node.set_id(id.to_static());
+            id
+        } else {
+            node.id()
+        };
+        reference.0.push(load_context.get_handle(id));
+        loader.1.send(node).or(Err(LoadError::ChannelError))?;
         let _ = input.extract_till(',');
         input.trim();
     }
