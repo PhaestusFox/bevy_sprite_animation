@@ -14,7 +14,11 @@ impl ReferenceNode {
 
 impl AnimationNodeTrait for ReferenceNode {
     fn run(&self, _: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
-        Err(RunError::Custom("Reference Node should not be root of a tree".to_string()))
+        if let Some(id) = self.0.first() {
+            Ok(NodeResult::Next(handle_to_node(id.id())))
+        } else {
+            Err(RunError::Custom("No Nodes in ReferenceNode".to_string()))
+        }
     }
 
     fn name(&self) -> &str {
@@ -35,12 +39,15 @@ impl AnimationNodeTrait for ReferenceNode {
         out.push_str(&format!(" [label={:?}];\n", self.1));
         this.dot(out);
         out.push_str(" [color=brown];\n");
-        for node in self.0.iter() {
+        for (i, node) in self.0.iter().enumerate() {
             this.dot(out);
             out.push_str(" -> ");
             handle_to_node(node.id()).dot(out);
-            out.push(';');
-            out.push('\n');
+            if i == 0 {
+                out.push_str(";\n");
+            } else {
+                out.push_str("[style=dotted];\n");
+            }
         }
     }
 }
