@@ -27,8 +27,7 @@ pub trait AnimationNodeTrait: Send + Sync + Any + AnimationNodeAsAny
     #[cfg(feature = "dot")]
     fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &AssetServer) {
         this.dot(out);
-        out.push(';');
-        out.push('\n');
+        out.push_str(&format!(" [label=\"{}\"];\n", self.name()));
     }
 }
 

@@ -30,7 +30,7 @@ impl AnimationNodeTrait for ReferenceNode {
         "Reference Node".to_string()
     }
     
-    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+    fn dot(&self, this: NodeId<'_>, out: &mut String, _: &bevy::prelude::AssetServer) {
         this.dot(out);
         out.push_str(&format!(" [label={:?}];\n", self.1));
         this.dot(out);

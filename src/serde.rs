@@ -1,7 +1,6 @@
 use bevy::asset::{LoadedAsset, AssetPath};
 use bevy::{prelude::*, asset::AssetLoader};
 use crate::error::LoadError;
-use crate::error::BevySpriteAnimationError as Error;
 use crate::prelude::*;
 
 pub struct AnimationNodeSerdePlugin;

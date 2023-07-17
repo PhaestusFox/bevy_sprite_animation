@@ -102,7 +102,7 @@ impl AnimationNodeTrait for FPSNode {
     }
 
     #[cfg(feature = "dot")]
-    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+    fn dot(&self, this: NodeId<'_>, out: &mut String, _: &bevy::prelude::AssetServer) {
         this.dot(out);
         out.push_str(&format!(" [label=\"{}\"];\n", self.name));
         this.dot(out);

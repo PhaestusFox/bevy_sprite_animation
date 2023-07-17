@@ -1,14 +1,11 @@
 use crate::error::StateError;
 
 use super::prelude::*;
-use super::error::BevySpriteAnimationError as Error;
-use bevy::{utils::{HashMap, HashSet}, reflect::TypeData};
-use serde::{Serialize, de::DeserializeOwned};
+use bevy::utils::{HashMap, HashSet};
 
 use bevy::prelude::*;
-use thiserror::Error;
 
-use std::any::{TypeId, Any};
+use std::any::Any;
 
 pub trait AnimationStateObj: Any + Send + Sync + Reflect {
     fn get_registration(&self) -> bevy::reflect::TypeRegistration;

@@ -108,7 +108,7 @@ where T:MatchType + serde::de::DeserializeOwned + serde::Serialize + std::any::A
     }
 
     #[cfg(feature = "dot")]
-    fn dot(&self, this: NodeId<'_>, out: &mut String, asset_server: &bevy::prelude::AssetServer) {
+    fn dot(&self, this: NodeId<'_>, out: &mut String, _: &bevy::prelude::AssetServer) {
         this.dot(out);
         out.push_str(&format!(" [label=\"{}\"];\n", self.name));
         for (index, next) in self.pairs.iter() {

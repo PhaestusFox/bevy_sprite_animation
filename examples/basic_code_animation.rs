@@ -21,11 +21,8 @@ fn setup_animations(
 ) {
     commands.spawn(Camera2dBundle::default());
 
-    let mut images = Vec::new();
     // Load all the images
-    for i in 0..=67 {
-        images.push(asset_server.load(&format!("Zombie1/Zombie1_{:05}.png", i)));
-    }
+    let images = asset_server.load_folder("Zombie1").unwrap().into_iter().map(|h| h.typed()).collect::<Vec<_>>();
 
     // Add a new IndexNode
     let index = nodes.add(AnimationNode::new(
