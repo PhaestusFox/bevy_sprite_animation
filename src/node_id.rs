@@ -249,16 +249,6 @@ impl Clone for NodeId<'_> {
     }
 }
 
-#[cfg(feature = "bevy-inspector-egui")]
-impl bevy_inspector_egui::Inspectable for NodeId {
-    type Attributes = ();
-
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _: Self::Attributes, _: &mut bevy_inspector_egui::Context) -> bool {
-        ui.label(self.to_string());
-        false
-    }
-}
-
 impl NodeId<'_> {
     #[cfg(feature = "dot")]
     pub fn dot(&self, out: &mut String) {

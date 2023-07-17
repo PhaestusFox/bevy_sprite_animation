@@ -66,8 +66,8 @@ impl<const MAX: usize> Plugin for SpriteAnimationPlugin<MAX> {
         app.register_type::<StartNode>();
         #[cfg(feature = "dot")]
         app.add_systems(Update, dot::write_dot);
-        #[cfg(feature = "bevy-inspector-egui")]
-        bevy_inspector_egui::RegisterInspectable::register_inspectable::<StartNode>(app);
+        #[cfg(feature = "editor")]
+        app.add_plugins(crate::editor::SpriteAnimationEditorPlugin);
     }
 }
 
@@ -151,28 +151,6 @@ impl Debug for AnimationNode {
     }
 }
 
-// impl bevy::reflect::DynamicTypePath for AnimationNode {
-//     fn reflect_type_path(&self) -> &str {
-//         self.0.reflect_type_path()
-//     }
-
-//     fn reflect_short_type_path(&self) -> &str {
-//         self.0.reflect_short_type_path()
-//     }
-
-//     fn reflect_type_ident(&self) -> Option<&str> {
-//         self.0.reflect_type_ident()
-//     }
-
-//     fn reflect_crate_name(&self) -> Option<&str> {
-//         self.0.reflect_crate_name()
-//     }
-
-//     fn reflect_module_path(&self) -> Option<&str> {
-//         self.0.reflect_module_path()
-//     }
-// }
-
 impl<'a> AnimationNodeTrait for AnimationNode {
     fn run(&self, state: &mut crate::state::AnimationState) -> Result<NodeResult, RunError> {
         self.0.run(state)
@@ -205,24 +183,6 @@ impl StartNode {
     } 
 }
 
-#[cfg(feature = "bevy-inspector-egui")]
-impl bevy_inspector_egui::Inspectable for StartNode {
-    type Attributes = ();
-
-    fn ui(&mut self, ui: &mut bevy_inspector_egui::egui::Ui, _options: Self::Attributes, _context: &mut bevy_inspector_egui::Context) -> bool {
-        let mut edit = false;
-        ui.horizontal(|ui|{
-            let mut name = self.0.name_or_id();
-            ui.label("Start Node: ");
-            if ui.text_edit_singleline(&mut name).changed() {
-                self.0 = NodeId::from_str(&name);
-                edit = true;
-            }
-        });
-        edit
-    }
-}
-
 impl std::fmt::Display for StartNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(&self.0, f)
@@ -250,20 +210,27 @@ impl StartNode {
 
 fn animation_system<const MAX: usize>(
     nodes: Res<Assets<AnimationNode>>,
-    mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode)>
+    mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode)>,
+    debug_nodes: Query<&StartNode>,
 ){
     query.par_iter_mut().for_each_mut(|(mut state,mut image, start)| {
         let mut next = NodeResult::Next(start.0.clone());
         trace!("Starting With: {:?}", start.0);
-        for _ in 0..MAX {
+        'main: for _ in 0..MAX {
             match next {
                 NodeResult::Next(id) => if let Some(node) = nodes.get(&Handle::weak(id.to_static().into())) {
-                    trace!("Running Node: {:?}",id);
+                    trace!("Running Node: {:?}", id);
                     next = match node.run(&mut state) {
                         Ok(ok) => ok,
                         Err(e) => {error!("{}", e); break;},
                     }
                 } else {
+                    for node in debug_nodes.iter() {
+                       if node.0 == id {
+                        error!("Node not found: {}", node.0);
+                        break 'main;
+                       }
+                    }
                     error!("Node not found: {:?}", id);
                     break;
                 },
