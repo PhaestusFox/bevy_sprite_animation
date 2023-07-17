@@ -7,7 +7,7 @@ pub trait AnimationNodeTrait: Reflect
 {
     fn run(&self, state: &mut super::state::AnimationState) -> Result<NodeResult, RunError>;
     fn name(&self) -> &str {
-        self.type_name()
+        self.reflect_short_type_path()
     }
     fn id(&self) -> NodeId<'_>;
     #[cfg(feature = "serialize")]

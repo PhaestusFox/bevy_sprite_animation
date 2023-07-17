@@ -220,8 +220,8 @@ impl NodeId<'static> {
     pub fn from_u64(id: u64) -> Self {
         NodeId::U64(id)
     }
-    pub fn from_handle(id: impl Into<HandleId>) -> Self {
-        NodeId::Handle(Handle::weak(id.into()))
+    pub fn from_handle(id: Handle<AnimationNode>) -> Self {
+        NodeId::Handle(id)
     }
 }
 
