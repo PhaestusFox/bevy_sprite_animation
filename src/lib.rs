@@ -63,6 +63,7 @@ impl<const MAX: usize> Plugin for SpriteAnimationPlugin<MAX> {
         app.add_systems(Last, state::clear_unchanged_temp);
         app.configure_sets(Update, (AnimationSet::PreUpdate, AnimationSet::Update, AnimationSet::PostUpdate).chain());
         nodes::type_registration::registor_nodes(app);
+        app.register_type::<StartNode>();
         #[cfg(feature = "dot")]
         app.add_systems(Update, dot::write_dot);
         #[cfg(feature = "bevy-inspector-egui")]
@@ -194,7 +195,7 @@ impl<'a> AnimationNodeTrait for AnimationNode {
     }
 }
 
-#[derive(Component)]
+#[derive(Component, Reflect)]
 pub struct StartNode(pub NodeId<'static>);
 
 impl StartNode {
