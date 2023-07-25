@@ -10,7 +10,7 @@ use serde::Deserializer;
 
 #[derive(Debug, Reflect)]
 #[reflect(LoadNode)]
-pub struct VariableNode{
+pub struct VariableNode {
     id: Option<NodeId<'static>>,
     name: String,
     frames: Vec<(Handle<Image>, f32)>,
@@ -31,7 +31,12 @@ impl VariableNode {
     }
 
     #[inline(always)]
-    pub fn new_with_index(name: &str, frames: &[(Handle<Image>, f32)], is_loop: bool, index: Attribute) -> VariableNode {
+    pub fn new_with_index(
+        name: &str,
+        frames: &[(Handle<Image>, f32)],
+        is_loop: bool,
+        index: Attribute,
+    ) -> VariableNode {
         VariableNode {
             id: None,
             name: name.to_string(),
@@ -104,11 +109,19 @@ impl AnimationNodeTrait for VariableNode {
 }
 
 impl LoadNode for VariableNode {
-    fn load<'b>(s: &str, load_context: &mut bevy::asset::LoadContext<'b>, dependencies: &mut Vec<AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+    fn load<'b>(
+        s: &str,
+        load_context: &mut bevy::asset::LoadContext<'b>,
+        dependencies: &mut Vec<AssetPath<'static>>,
+    ) -> Result<AnimationNode, crate::error::LoadError> {
         let mut node = ron::de::Deserializer::from_str(s)?;
-        match node.deserialize_struct("IndexNode", &[], VariableLoader(load_context, dependencies)) {
+        match node.deserialize_struct("IndexNode", &[], VariableLoader(load_context, dependencies))
+        {
             Ok(ok) => Ok(AnimationNode::new(ok)),
-            Err(e) => Err(LoadError::Ron(ron::de::SpannedError{code: e, position: ron::de::Position{line: 0, col: 0}})),
+            Err(e) => Err(LoadError::Ron(ron::de::SpannedError {
+                code: e,
+                position: ron::de::Position { line: 0, col: 0 },
+            })),
         }
     }
 }
@@ -122,7 +135,10 @@ enum Fileds {
     Index,
 }
 
-struct VariableLoader<'de, 'b: 'de>(&'de mut bevy::asset::LoadContext<'b>, &'de mut Vec<AssetPath<'static>>);
+struct VariableLoader<'de, 'b: 'de>(
+    &'de mut bevy::asset::LoadContext<'b>,
+    &'de mut Vec<AssetPath<'static>>,
+);
 
 impl<'de, 'b: 'de> serde::de::Visitor<'de> for VariableLoader<'de, 'b> {
     type Value = VariableNode;
@@ -130,13 +146,14 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for VariableLoader<'de, 'b> {
         formatter.write_str("Ron String or a IndexNode")
     }
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-        where
-            A: serde::de::MapAccess<'de>, {
+    where
+        A: serde::de::MapAccess<'de>,
+    {
         use serde::de::Error;
-            let mut name = None;
-            let mut frames = None;
-            let mut is_loop = false;
-            let mut index = Attribute::IndexId(0);
+        let mut name = None;
+        let mut frames = None;
+        let mut is_loop = false;
+        let mut index = Attribute::IndexId(0);
         while let Some(key) = map.next_key::<Fileds>()? {
             match key {
                 Fileds::Name => name = Some(map.next_value::<String>()?),
@@ -157,7 +174,7 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for VariableLoader<'de, 'b> {
             frames: handles,
             name,
             is_loop,
-            index
+            index,
         })
     }
 }

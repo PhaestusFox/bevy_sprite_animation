@@ -1,15 +1,15 @@
 use std::path::PathBuf;
 
-use bevy::{prelude::{Handle, warn}, reflect::Reflect};
+use bevy::{
+    prelude::{warn, Handle},
+    reflect::Reflect,
+};
 
-use crate::{AnimationNode, prelude::*, utils::get_node_hash};
+use crate::{prelude::*, utils::get_node_hash, AnimationNode};
 
 /// this is used to stop Nodes Unloading as soon as they are loaded drop its handle when you are done with the file it represents
 #[derive(Reflect)]
-pub struct ReferenceNode(
-    pub Vec<Handle<AnimationNode>>,
-    pub PathBuf
-);
+pub struct ReferenceNode(pub Vec<Handle<AnimationNode>>, pub PathBuf);
 
 impl ReferenceNode {
     pub fn iter(&self) -> impl Iterator<Item = &Handle<AnimationNode>> {

@@ -1,5 +1,5 @@
-use bevy::prelude::*;
 use crate::prelude::*;
+use bevy::prelude::*;
 
 use std::{
     io::Write,
@@ -18,7 +18,9 @@ impl KeyChain {
         self.0 == [KeyCode::D, KeyCode::O, KeyCode::T]
     }
     fn add(&mut self, key: KeyCode) {
-        if key == KeyCode::NumpadAdd {return;}
+        if key == KeyCode::NumpadAdd {
+            return;
+        }
         self.0[0] = self.0[1];
         self.0[1] = self.0[2];
         self.0[2] = key;
@@ -32,8 +34,12 @@ pub fn write_dot(
     roots: Query<(Entity, &StartNode)>,
     asset_server: Res<AssetServer>,
 ) {
-    for key in input.get_just_pressed() {local.add(*key);};
-    if !input.just_pressed(KeyCode::NumpadAdd) || !local.test() {return;}
+    for key in input.get_just_pressed() {
+        local.add(*key);
+    }
+    if !input.just_pressed(KeyCode::NumpadAdd) || !local.test() {
+        return;
+    }
     println!("run dot");
     let mut string = String::from("digraph graphname {\n");
     for (root, node) in &roots {

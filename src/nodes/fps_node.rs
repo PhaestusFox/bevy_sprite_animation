@@ -1,8 +1,8 @@
+use crate::prelude::*;
+use crate::serde::ReflectLoadNode;
 use bevy::reflect::Reflect;
 use bevy::reflect::ReflectDeserialize;
 use bevy::reflect::ReflectSerialize;
-use crate::serde::ReflectLoadNode;
-use crate::prelude::*;
 
 #[derive(serde::Serialize, serde::Deserialize, Reflect)]
 #[reflect(Serialize, Deserialize, LoadNode)]
@@ -14,15 +14,19 @@ pub struct FPSNode {
     then: NodeId<'static>,
 }
 impl crate::serde::LoadNode for FPSNode {
-    fn load<'b>(s: &str, _load_context: &mut bevy::asset::LoadContext<'b>, _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+    fn load<'b>(
+        s: &str,
+        _load_context: &mut bevy::asset::LoadContext<'b>,
+        _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>,
+    ) -> Result<AnimationNode, crate::error::LoadError> {
         let node = ron::from_str::<FPSNode>(s)?;
         Ok(AnimationNode::new(node))
     }
 }
 
 impl FPSNode {
-    pub fn new(name: &str, fps: u32, next: impl Into<NodeId<'static>>) -> FPSNode{
-        FPSNode{
+    pub fn new(name: &str, fps: u32, next: impl Into<NodeId<'static>>) -> FPSNode {
+        FPSNode {
             id: None,
             name: name.to_string(),
             fps,
@@ -42,7 +46,10 @@ impl AnimationNodeTrait for FPSNode {
 
     fn run(&self, state: &mut AnimationState) -> Result<NodeResult, RunError> {
         let delta = state.attribute::<f32>(&Attribute::Delta);
-        let rem_time = state.get_attribute::<f32>(&Attribute::TimeThisFrame).cloned().unwrap_or(0.);
+        let rem_time = state
+            .get_attribute::<f32>(&Attribute::TimeThisFrame)
+            .cloned()
+            .unwrap_or(0.);
         let time = delta + rem_time;
         let frames = (time / self.frame_time()).floor();
         let rem_time = time - self.frame_time() * frames;

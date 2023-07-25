@@ -10,7 +10,7 @@ use serde::Deserializer;
 
 #[derive(Debug, Reflect)]
 #[reflect(LoadNode)]
-pub struct IndexNode{
+pub struct IndexNode {
     id: Option<NodeId<'static>>,
     name: String,
     frames: Vec<Handle<Image>>,
@@ -20,7 +20,7 @@ pub struct IndexNode{
 
 impl IndexNode {
     #[inline(always)]
-    pub fn new(name: &str, frames: &[Handle<Image>], is_loop: bool) -> IndexNode{
+    pub fn new(name: &str, frames: &[Handle<Image>], is_loop: bool) -> IndexNode {
         IndexNode {
             id: None,
             name: name.to_string(),
@@ -31,8 +31,13 @@ impl IndexNode {
     }
 
     #[inline(always)]
-    pub fn new_with_index(name: &str, frames: &[Handle<Image>], is_loop: bool, index: Attribute) -> IndexNode {
-        IndexNode { 
+    pub fn new_with_index(
+        name: &str,
+        frames: &[Handle<Image>],
+        is_loop: bool,
+        index: Attribute,
+    ) -> IndexNode {
+        IndexNode {
             id: None,
             name: name.to_string(),
             frames: frames.to_vec(),
@@ -70,7 +75,7 @@ impl AnimationNodeTrait for IndexNode {
             NodeId::from_name(&self.name)
         }
     }
-    
+
     fn set_id(&mut self, id: NodeId<'_>) {
         self.id = Some(id.to_static());
     }
@@ -96,11 +101,18 @@ impl AnimationNodeTrait for IndexNode {
 }
 
 impl LoadNode for IndexNode {
-    fn load<'b>(s: &str, load_context: &mut bevy::asset::LoadContext<'b>, dependencies: &mut Vec<AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+    fn load<'b>(
+        s: &str,
+        load_context: &mut bevy::asset::LoadContext<'b>,
+        dependencies: &mut Vec<AssetPath<'static>>,
+    ) -> Result<AnimationNode, crate::error::LoadError> {
         let mut node = ron::de::Deserializer::from_str(s)?;
         match node.deserialize_struct("IndexNode", &[], IndexLoader(load_context, dependencies)) {
             Ok(ok) => Ok(AnimationNode::new(ok)),
-            Err(e) => Err(LoadError::Ron(ron::de::SpannedError{code: e, position: ron::de::Position{line: 0, col: 0}})),
+            Err(e) => Err(LoadError::Ron(ron::de::SpannedError {
+                code: e,
+                position: ron::de::Position { line: 0, col: 0 },
+            })),
         }
     }
 }
@@ -114,7 +126,10 @@ enum Fileds {
     Index,
 }
 
-struct IndexLoader<'de, 'b: 'de>(&'de mut bevy::asset::LoadContext<'b>, &'de mut Vec<AssetPath<'static>>);
+struct IndexLoader<'de, 'b: 'de>(
+    &'de mut bevy::asset::LoadContext<'b>,
+    &'de mut Vec<AssetPath<'static>>,
+);
 
 impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
     type Value = IndexNode;
@@ -122,8 +137,9 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
         formatter.write_str("Ron String or a IndexNode")
     }
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-        where
-            A: serde::de::MapAccess<'de>, {
+    where
+        A: serde::de::MapAccess<'de>,
+    {
         use serde::de::Error;
         let mut name = None;
         let mut frames = None;
@@ -149,7 +165,7 @@ impl<'de, 'b: 'de> serde::de::Visitor<'de> for IndexLoader<'de, 'b> {
             frames: handles,
             name,
             is_loop,
-            index
+            index,
         })
     }
 }

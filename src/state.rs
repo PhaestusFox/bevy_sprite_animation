@@ -11,7 +11,7 @@ pub trait AnimationStateObj: Any + Send + Sync + Reflect {
     fn get_registration(&self) -> bevy::reflect::TypeRegistration;
 }
 
-impl<T: Any + Send + Sync + Reflect + bevy::reflect::GetTypeRegistration> AnimationStateObj for T  {
+impl<T: Any + Send + Sync + Reflect + bevy::reflect::GetTypeRegistration> AnimationStateObj for T {
     fn get_registration(&self) -> bevy::reflect::TypeRegistration {
         T::get_type_registration()
     }
@@ -27,21 +27,25 @@ pub struct AnimationState {
 impl std::fmt::Debug for AnimationState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AnimationState")
-        // .field("data", &self.data)
-        .field("changed", &self.changed)
-        .field("temp", &self.temp)
-        .finish()
+            // .field("data", &self.data)
+            .field("changed", &self.changed)
+            .field("temp", &self.temp)
+            .finish()
     }
 }
 
 impl Default for AnimationState {
     fn default() -> Self {
         let mut data: HashMap<Attribute, Box<dyn AnimationStateObj>> = HashMap::default();
-        data.insert(Attribute::Delta,  Box::new(0.0f32));
+        data.insert(Attribute::Delta, Box::new(0.0f32));
         data.insert(Attribute::Frames, Box::new(0));
         data.insert(Attribute::FlipX, Box::new(false));
         data.insert(Attribute::FlipY, Box::new(false));
-        let s = Self { data, changed: HashSet::new(), temp: HashSet::new()};
+        let s = Self {
+            data,
+            changed: HashSet::new(),
+            temp: HashSet::new(),
+        };
         s
     }
 }
@@ -52,17 +56,20 @@ impl AnimationState {
     /// use try_get_attribute() if you are unsure if the attribute exists
     #[inline(always)]
     pub fn attribute<D: 'static>(&self, key: &Attribute) -> &D {
-        self.get_attribute(key).expect(&format!("get Attribute {} failed", key))
+        self.get_attribute(key)
+            .expect(&format!("get Attribute {} failed", key))
     }
 
     /// will return an `Result<D, StateError>`
-    /// # Errors 
+    /// # Errors
     /// * WrongType - the type used to get is not the same as the one used to set
     /// * NotFound - there is no data set for the Attribute
     #[inline(always)]
     pub fn get_attribute<D: 'static>(&self, key: &Attribute) -> Result<&D, StateError> {
         if let Some(data) = self.data.get(key) {
-            data.as_any().downcast_ref::<D>().ok_or(StateError::WrongType)
+            data.as_any()
+                .downcast_ref::<D>()
+                .ok_or(StateError::WrongType)
         } else {
             Err(StateError::NotFound)
         }
@@ -102,18 +109,29 @@ impl AnimationState {
     /// get the usize for an index panics if given something other then Index or IndexId
     /// return 0 if index does not exist or is wrong type
     pub fn index(&self, index: &Attribute) -> usize {
-        self.get_index(index).expect("Attribute to be Index or IndexId")
+        self.get_index(index)
+            .expect("Attribute to be Index or IndexId")
     }
 
     /// try get the usize for an index return None if given something other then Index or IndexId
     /// return 0 if index does not exist or is wrong type
     pub fn get_index(&self, index: &Attribute) -> Option<usize> {
-        if !index.is_index() {return None;}
-        Some(self.get_attribute::<usize>(index).cloned().unwrap_or_default())
+        if !index.is_index() {
+            return None;
+        }
+        Some(
+            self.get_attribute::<usize>(index)
+                .cloned()
+                .unwrap_or_default(),
+        )
     }
 
     #[cfg(feature = "ron")]
-    pub(crate) fn set_from_ron(&mut self, attribute: &Attribute, s: &str) -> Result<(), StateError> {
+    pub(crate) fn set_from_ron(
+        &mut self,
+        attribute: &Attribute,
+        s: &str,
+    ) -> Result<(), StateError> {
         let Some(main) = self.data.get_mut(attribute) else {return Err(StateError::NotFound);};
         let data = main.get_registration();
         let Some(data) = data.data::<ReflectDeserialize>() else {return Err(StateError::NotRegistered(data.type_name()));};
@@ -122,21 +140,15 @@ impl AnimationState {
         main.set(val).expect("Same Type");
         Ok(())
     }
-
 }
 
-pub(crate) fn update_delta(
-    time: Res<Time>,
-    mut states: Query<&mut AnimationState>,
-){
+pub(crate) fn update_delta(time: Res<Time>, mut states: Query<&mut AnimationState>) {
     for mut state in states.iter_mut() {
         state.set_attribute(Attribute::Delta, time.delta_seconds());
     }
 }
 
-pub(crate) fn clear_unchanged_temp(
-    mut states: Query<&mut AnimationState>,
-) {
+pub(crate) fn clear_unchanged_temp(mut states: Query<&mut AnimationState>) {
     for mut state in states.iter_mut() {
         let state = state.as_mut();
         let mut to_clear = Vec::with_capacity(state.temp.len());
@@ -151,17 +163,13 @@ pub(crate) fn clear_unchanged_temp(
     }
 }
 
-pub(crate) fn clear_changed(
-    mut states: Query<&mut AnimationState>
-) {
+pub(crate) fn clear_changed(mut states: Query<&mut AnimationState>) {
     for mut state in states.iter_mut() {
         state.changed.clear();
     }
 }
 
-pub(crate) fn flip_update(
-    mut sprites: Query<(&AnimationState, &mut Sprite)>,
-){
+pub(crate) fn flip_update(mut sprites: Query<(&AnimationState, &mut Sprite)>) {
     for (state, mut sprite) in sprites.iter_mut() {
         sprite.flip_x = *state.attribute(&Attribute::FlipX);
         sprite.flip_y = *state.attribute(&Attribute::FlipY);

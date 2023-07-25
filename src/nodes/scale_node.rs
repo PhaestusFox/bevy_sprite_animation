@@ -1,13 +1,13 @@
-use crate::serde::ReflectLoadNode;
-use crate::serde::LoadNode;
-use crate::prelude::*;
-use bevy::reflect::Reflect;
-use serde::{Serialize, Deserialize, Deserializer};
 use crate::error::LoadError;
+use crate::prelude::*;
+use crate::serde::LoadNode;
+use crate::serde::ReflectLoadNode;
+use bevy::reflect::Reflect;
+use serde::{Deserialize, Deserializer, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Reflect)]
 #[reflect(LoadNode)]
-pub struct ScaleNode{
+pub struct ScaleNode {
     #[serde(default)]
     id: Option<NodeId<'static>>,
     name: String,
@@ -22,7 +22,7 @@ impl ScaleNode {
             id: None,
             name: name.to_string(),
             scale,
-            next
+            next,
         }
     }
 }
@@ -36,7 +36,10 @@ impl AnimationNodeTrait for ScaleNode {
         let rem_time = state.attribute::<f32>(&Attribute::TimeThisFrame);
         let frames = *state.attribute::<usize>(&Attribute::Frames);
         let last = state.attribute::<f32>(&Attribute::LastFPS);
-        let scale = state.get_attribute::<f32>(&self.scale).cloned().unwrap_or(1.);
+        let scale = state
+            .get_attribute::<f32>(&self.scale)
+            .cloned()
+            .unwrap_or(1.);
         let mut frame_time = last * frames as f32 + rem_time;
         let width = last * scale;
         let frames = (frame_time / width).floor();
@@ -72,11 +75,18 @@ impl AnimationNodeTrait for ScaleNode {
 }
 
 impl LoadNode for ScaleNode {
-    fn load<'b>(s: &str, _: &mut bevy::asset::LoadContext<'b>, _: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<AnimationNode, crate::error::LoadError> {
+    fn load<'b>(
+        s: &str,
+        _: &mut bevy::asset::LoadContext<'b>,
+        _: &mut Vec<bevy::asset::AssetPath<'static>>,
+    ) -> Result<AnimationNode, crate::error::LoadError> {
         let mut node = ron::de::Deserializer::from_str(s)?;
         match node.deserialize_struct("ScaleNode", &[], ScaleLoader) {
             Ok(ok) => Ok(AnimationNode::new(ok)),
-            Err(e) => Err(LoadError::Ron(ron::de::SpannedError{code: e, position: ron::de::Position{line: 0, col: 0}})),
+            Err(e) => Err(LoadError::Ron(ron::de::SpannedError {
+                code: e,
+                position: ron::de::Position { line: 0, col: 0 },
+            })),
         }
     }
 }
@@ -97,12 +107,13 @@ impl<'de> serde::de::Visitor<'de> for ScaleLoader {
         formatter.write_str("Ron String or a IndexNode")
     }
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-        where
-            A: serde::de::MapAccess<'de>, {
+    where
+        A: serde::de::MapAccess<'de>,
+    {
         use serde::de::Error;
-            let mut name = None;
-            let mut scale = None;
-            let mut next = None;
+        let mut name = None;
+        let mut scale = None;
+        let mut next = None;
         while let Some(key) = map.next_key::<Fileds>()? {
             match key {
                 Fileds::Name => name = Some(map.next_value::<String>()?),
@@ -117,7 +128,7 @@ impl<'de> serde::de::Visitor<'de> for ScaleLoader {
             id: None,
             name,
             scale,
-            next
+            next,
         })
     }
 }

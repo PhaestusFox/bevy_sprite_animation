@@ -1,7 +1,7 @@
-use bevy::prelude::*;
 use crate::error::BevySpriteAnimationError as Error;
-use std::fmt::Debug;
 use crate::prelude::*;
+use bevy::prelude::*;
+use std::fmt::Debug;
 
 pub(crate) mod utils {
     use std::hash::Hasher;
@@ -36,7 +36,7 @@ pub mod node_id;
 pub mod dot;
 
 #[cfg(test)]
-mod test{
+mod test {
     pub(crate) fn test_asset_server() -> bevy::asset::AssetServer {
         use bevy::core::TaskPoolOptions;
         TaskPoolOptions::default().create_default_pools();
@@ -61,7 +61,15 @@ impl<const MAX: usize> Plugin for SpriteAnimationPlugin<MAX> {
         app.add_systems(Update, animation_system::<MAX>.in_set(AnimationSet::Update));
         app.add_systems(Update, state::flip_update.in_set(AnimationSet::PostUpdate));
         app.add_systems(Last, state::clear_unchanged_temp);
-        app.configure_sets(Update, (AnimationSet::PreUpdate, AnimationSet::Update, AnimationSet::PostUpdate).chain());
+        app.configure_sets(
+            Update,
+            (
+                AnimationSet::PreUpdate,
+                AnimationSet::Update,
+                AnimationSet::PostUpdate,
+            )
+                .chain(),
+        );
         nodes::type_registration::registor_nodes(app);
         app.register_type::<StartNode>();
         #[cfg(feature = "dot")]
@@ -72,10 +80,8 @@ impl<const MAX: usize> Plugin for SpriteAnimationPlugin<MAX> {
 }
 
 #[derive(bevy::reflect::TypeUuid, bevy::reflect::TypePath)]
-#[uuid="b30eb8be-06db-4d7c-922d-22767a539ad6"]
-pub struct AnimationNode(
-    pub Box<dyn AnimationNodeTrait>
-);
+#[uuid = "b30eb8be-06db-4d7c-922d-22767a539ad6"]
+pub struct AnimationNode(pub Box<dyn AnimationNodeTrait>);
 
 impl bevy::reflect::Reflect for AnimationNode {
     fn type_name(&self) -> &str {
@@ -180,7 +186,7 @@ impl StartNode {
     #[cfg(feature = "dot")]
     fn dot(&self, out: &mut String) {
         self.0.dot(out)
-    } 
+    }
 }
 
 impl std::fmt::Display for StartNode {
@@ -212,30 +218,40 @@ fn animation_system<const MAX: usize>(
     nodes: Res<Assets<AnimationNode>>,
     mut query: Query<(&mut state::AnimationState, &mut Handle<Image>, &StartNode)>,
     debug_nodes: Query<&StartNode>,
-){
-    query.par_iter_mut().for_each_mut(|(mut state,mut image, start)| {
-        let mut next = NodeResult::Next(start.0.clone());
-        trace!("Starting With: {:?}", start.0);
-        'main: for _ in 0..MAX {
-            match next {
-                NodeResult::Next(id) => if let Some(node) = nodes.get(&Handle::weak(id.to_static().into())) {
-                    trace!("Running Node: {:?}", id);
-                    next = match node.run(&mut state) {
-                        Ok(ok) => ok,
-                        Err(e) => {error!("{}", e); break;},
+) {
+    query
+        .par_iter_mut()
+        .for_each_mut(|(mut state, mut image, start)| {
+            let mut next = NodeResult::Next(start.0.clone());
+            trace!("Starting With: {:?}", start.0);
+            'main: for _ in 0..MAX {
+                match next {
+                    NodeResult::Next(id) => {
+                        if let Some(node) = nodes.get(&Handle::weak(id.to_static().into())) {
+                            trace!("Running Node: {:?}", id);
+                            next = match node.run(&mut state) {
+                                Ok(ok) => ok,
+                                Err(e) => {
+                                    error!("{}", e);
+                                    break;
+                                }
+                            }
+                        } else {
+                            for node in debug_nodes.iter() {
+                                if node.0 == id {
+                                    error!("Node not found: {}", node.0);
+                                    break 'main;
+                                }
+                            }
+                            error!("Node not found: {:?}", id);
+                            break;
+                        }
                     }
-                } else {
-                    for node in debug_nodes.iter() {
-                       if node.0 == id {
-                        error!("Node not found: {}", node.0);
-                        break 'main;
-                       }
+                    NodeResult::Done(h) => {
+                        *image = h;
+                        break;
                     }
-                    error!("Node not found: {:?}", id);
-                    break;
-                },
-                NodeResult::Done(h) => {*image = h; break;},
+                }
             }
-        }
-    })
+        })
 }

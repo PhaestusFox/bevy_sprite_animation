@@ -24,7 +24,7 @@ pub enum LoadError {
     NoClosing {
         ch: char,
         file: Cow<'static, str>,
-        pos: Position
+        pos: Position,
     },
     #[error("The Loader RwLock is Poisened")]
     RwLockPoisoned,
@@ -39,7 +39,7 @@ pub enum LoadError {
     #[error("Wrong extension given; this is probabley a bug with Bevy")]
     WrongExtension,
     #[error("Missing Char: expected {ch} at {pos}")]
-    MissingChar{ch: char, pos: Position},
+    MissingChar { ch: char, pos: Position },
     #[error("Error Reading Id with Ron: {0}")]
     Ron(#[from] ron::error::SpannedError),
     #[error("Channel Not Working")]
@@ -47,28 +47,28 @@ pub enum LoadError {
     #[error("Type '{0}' not in AppTypeRegistry; use app.register_type::<T>()")]
     NotRegistered(String),
     #[error("Type '{0}' dose not have LoadNode in AppTypeRegistry; impl LoadNode for T then use #[reflect(LoadNode)]")]
-    NoLoadRegistered(String)
+    NoLoadRegistered(String),
 }
 
 impl LoadError {
     pub fn add_offset(self, offset: Position) -> Self {
         match self {
-            LoadError::NoClosing {ch, file,mut pos} => {
+            LoadError::NoClosing { ch, file, mut pos } => {
                 pos.line += offset.line;
                 pos.col += offset.col;
-                LoadError::NoClosing {ch, file, pos }
-            },
+                LoadError::NoClosing { ch, file, pos }
+            }
             LoadError::MissingChar { ch, mut pos } => {
                 pos.line += offset.line;
                 pos.col += offset.col;
                 LoadError::MissingChar { ch, pos }
-            },
+            }
             LoadError::Ron(mut e) => {
                 e.position.line += offset.line;
                 e.position.col += offset.col;
                 LoadError::Ron(e)
             }
-            e => e
+            e => e,
         }
     }
 }
@@ -84,7 +84,7 @@ pub enum StateError {
     SetByRon(#[from] ron::de::Error),
     #[cfg(feature = "ron")]
     #[error("{0} dose not #[reflect(Deserialise)]")]
-    NotRegistered(&'static str)
+    NotRegistered(&'static str),
 }
 
 #[derive(Debug, Error)]
@@ -92,11 +92,9 @@ pub enum RunError {
     #[error("{0}")]
     StateError(#[from] StateError),
     #[error("{0}")]
-    Custom(String)
+    Custom(String),
 }
 
 #[cfg(feature = "serialize")]
 #[derive(Debug, Error)]
-pub enum SaveError {
-    
-}
+pub enum SaveError {}

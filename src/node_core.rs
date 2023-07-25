@@ -1,10 +1,12 @@
 use std::fmt::Debug;
 
+use crate::{
+    error::{BevySpriteAnimationError as Error, RunError},
+    prelude::*,
+};
 use bevy::prelude::*;
-use crate::{error::{BevySpriteAnimationError as Error, RunError}, prelude::*};
 
-pub trait AnimationNodeTrait: Reflect
-{
+pub trait AnimationNodeTrait: Reflect {
     fn run(&self, state: &mut super::state::AnimationState) -> Result<NodeResult, RunError>;
     fn name(&self) -> &str {
         self.reflect_short_type_path()
@@ -40,7 +42,7 @@ pub enum NodeResult {
     Done(Handle<Image>),
 }
 
-impl std::fmt::Display for NodeResult{
+impl std::fmt::Display for NodeResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeResult::Next(id) => f.write_fmt(format_args!("Next({:#?})", id)),

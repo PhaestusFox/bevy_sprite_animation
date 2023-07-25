@@ -1,8 +1,11 @@
-use bevy::{prelude::AssetServer, reflect::Reflect};
-use bevy::log::error;
 use crate::prelude::RunError;
-use crate::serde::{ReflectLoadNode, LoadNode};
-use crate::{prelude::{NodeId, Attribute, AnimationNodeTrait, NodeResult, BevySpriteAnimationError}, state::AnimationState};
+use crate::serde::{LoadNode, ReflectLoadNode};
+use crate::{
+    prelude::{AnimationNodeTrait, Attribute, BevySpriteAnimationError, NodeId, NodeResult},
+    state::AnimationState,
+};
+use bevy::log::error;
+use bevy::{prelude::AssetServer, reflect::Reflect};
 use std::str::FromStr;
 
 impl AnimationNodeTrait for ScriptNode {
@@ -11,7 +14,12 @@ impl AnimationNodeTrait for ScriptNode {
         while index < self.tokens.len() {
             match &self.tokens[index] {
                 Token::If => {
-                    if if_condishion(state, &self.tokens[index + 1], &self.tokens[index + 2], &self.tokens[index + 3]) {
+                    if if_condishion(
+                        state,
+                        &self.tokens[index + 1],
+                        &self.tokens[index + 2],
+                        &self.tokens[index + 3],
+                    ) {
                         index += 4;
                     } else {
                         index += 7;
@@ -20,14 +28,16 @@ impl AnimationNodeTrait for ScriptNode {
                 Token::Set => {
                     let key = match &self.tokens[index + 1] {
                         Token::Attribute(i) => i,
-                        _ => {panic!("unimplemented `set {:?}`", self.tokens[index + 1])}
+                        _ => {
+                            panic!("unimplemented `set {:?}`", self.tokens[index + 1])
+                        }
                     };
                     match &self.tokens[index + 2] {
                         Token::Raw(_) => {
                             todo!();
                             // let data = state.get_attribute_raw_mut(&key);
                             //*data = v.clone();
-                        },
+                        }
                         Token::Ron(data) => {
                             #[cfg(feature = "ron")]
                             {
@@ -55,9 +65,12 @@ impl AnimationNodeTrait for ScriptNode {
                             }
                             #[cfg(not(feature = "ron"))]
                             {
-                                return Err(NodeResult::Error(format!("tried to set {:?} = Ron({}) without ron feature", key, data)));
+                                return Err(NodeResult::Error(format!(
+                                    "tried to set {:?} = Ron({}) without ron feature",
+                                    key, data
+                                )));
                             }
-                        },
+                        }
                         Token::Int(val) => {
                             if key.is_index() {
                                 state.set_attribute(key.clone(), *val);
@@ -65,10 +78,14 @@ impl AnimationNodeTrait for ScriptNode {
                                 panic!("unimplemented only Index(_) can be set to int")
                             }
                         }
-                        _ => panic!("unimplemented `set {:?} = {:?}`", key, self.tokens[index + 2]),
+                        _ => panic!(
+                            "unimplemented `set {:?} = {:?}`",
+                            key,
+                            self.tokens[index + 2]
+                        ),
                     }
                     index += 3;
-                },
+                }
                 Token::Return(id) => {
                     return Ok(NodeResult::Next(id.to_static()));
                 }
@@ -82,10 +99,12 @@ impl AnimationNodeTrait for ScriptNode {
         if let Some(fallback) = &self.fallback {
             bevy::log::warn!("fallback {:?} used", fallback);
             Ok(NodeResult::Next(fallback.to_static()))
-        }
-        else {
-            Err(RunError::Custom("ScriptNode: failed to find a node to return and no fallback was set;\n
-            use #fallback followed by a NodeId at the begging of you script to set a fallback node".to_string()))
+        } else {
+            Err(RunError::Custom(
+                "ScriptNode: failed to find a node to return and no fallback was set;\n
+            use #fallback followed by a NodeId at the begging of you script to set a fallback node"
+                    .to_string(),
+            ))
         }
     }
 
@@ -125,7 +144,11 @@ impl AnimationNodeTrait for ScriptNode {
         self.tags.push(Tag::ID(new.to_static()))
     }
 
-    fn serialize(&self, data: &mut String, _: &AssetServer) -> Result<(), BevySpriteAnimationError> {
+    fn serialize(
+        &self,
+        data: &mut String,
+        _: &AssetServer,
+    ) -> Result<(), BevySpriteAnimationError> {
         data.push_str("ScriptNode(");
         data.push(' ');
         for tag in self.tags.iter() {
@@ -217,13 +240,13 @@ impl ToString for Token {
                 }
                 res.push(']');
                 res
-                },
+            }
             Token::If => "if".to_string(),
             Token::Else => "else".to_string(),
             Token::Set => "set".to_string(),
             Token::Attribute(att) => format!("{}", att),
             Token::Ron(data) => format!("Ron({})", data),
-            _ => panic!("unimplemented `to_string` for {:?}", self)
+            _ => panic!("unimplemented `to_string` for {:?}", self),
         }
     }
 }
@@ -260,8 +283,10 @@ impl ScriptNode {
         let mut tags = Vec::new();
         let script = script.trim();
         let script = if script.starts_with('(') {
-            &script[1..script.len()-1]
-        } else { script };
+            &script[1..script.len() - 1]
+        } else {
+            script
+        };
         let mut words = script.split_whitespace().peekable();
         let mut open = 0;
         let mut closed = 0;
@@ -285,16 +310,16 @@ impl ScriptNode {
                         } else {
                             tags.push(Tag::Name(next.to_string()));
                         }
-                    },
+                    }
                     "id" => {
                         let next = words.next().expect("id to follow #id");
                         tags.push(Tag::ID(NodeId::from_str(next).unwrap()));
-                    },
+                    }
                     "fallback" => {
                         let next = words.next().expect("fallback to follow #fallback");
                         fallback = Some(NodeId::from_str(next).unwrap());
-                    },
-                    _ => bevy::log::warn!("unknown tag: #{}", first)
+                    }
+                    _ => bevy::log::warn!("unknown tag: #{}", first),
                 }
             } else {
                 break;
@@ -306,15 +331,23 @@ impl ScriptNode {
                 let named = word.starts_with("(\"");
                 tokens.push(Token::Attribute(if word.ends_with(')') {
                     if named {
-                        Attribute::new_attribute(word[2..word.len()-2].to_string())
+                        Attribute::new_attribute(word[2..word.len() - 2].to_string())
                     } else {
-                        Attribute::CustomId(word[1..word.len()-1].parse::<u64>().expect("Attribute(_) must be a number"))
+                        Attribute::CustomId(
+                            word[1..word.len() - 1]
+                                .parse::<u64>()
+                                .expect("Attribute(_) must be a number"),
+                        )
                     }
                 } else {
                     let mut name = word[2..].to_string();
                     while !name.ends_with(')') {
                         name.push(' ');
-                        name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
+                        name.push_str(
+                            words
+                                .next()
+                                .expect(&format!("{} to have closing ')'", word)),
+                        );
                     }
                     name.pop();
                     name.pop();
@@ -326,15 +359,23 @@ impl ScriptNode {
                 let named = word.starts_with("(\"");
                 tokens.push(Token::Attribute(if word.ends_with(')') {
                     if named {
-                        Attribute::new_index(word[2..word.len()-2].to_string())
+                        Attribute::new_index(word[2..word.len() - 2].to_string())
                     } else {
-                        Attribute::IndexId(word[1..word.len()-1].parse::<u64>().expect("Index(_) must be a number"))
+                        Attribute::IndexId(
+                            word[1..word.len() - 1]
+                                .parse::<u64>()
+                                .expect("Index(_) must be a number"),
+                        )
                     }
                 } else {
                     let mut name = word[2..].to_string();
                     while !name.ends_with(')') {
                         name.push(' ');
-                        name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
+                        name.push_str(
+                            words
+                                .next()
+                                .expect(&format!("{} to have closing ')'", word)),
+                        );
                     }
                     name.pop();
                     name.pop();
@@ -349,7 +390,11 @@ impl ScriptNode {
                     let mut name = word[7..].to_string();
                     while !name.ends_with(')') {
                         name.push(' ');
-                        name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
+                        name.push_str(
+                            words
+                                .next()
+                                .expect(&format!("{} to have closing ')'", word)),
+                        );
                     }
                     name.pop();
                     tokens.push(Token::NodeId(NodeId::from_str(&name).unwrap()));
@@ -363,17 +408,24 @@ impl ScriptNode {
                     let mut name = word[9..].to_string();
                     while !name.ends_with(')') {
                         name.push(' ');
-                        name.push_str(words.next().expect(&format!("{} to have closing ')'", word)));
+                        name.push_str(
+                            words
+                                .next()
+                                .expect(&format!("{} to have closing ')'", word)),
+                        );
                     }
                     name.pop();
                     tokens.push(Token::NodeId(NodeId::from_str(&name).unwrap()));
                 }
                 continue;
             }
-            if word.starts_with(|c: char| {c.is_digit(10)}) {
+            if word.starts_with(|c: char| c.is_digit(10)) {
                 if word.starts_with("0x") {
-                    tokens.push(Token::Int(usize::from_str_radix(&word[2..], 16).expect("proper hex format")));
-                } if word.contains('.') {
+                    tokens.push(Token::Int(
+                        usize::from_str_radix(&word[2..], 16).expect("proper hex format"),
+                    ));
+                }
+                if word.contains('.') {
                     let float: f32 = word.parse().expect("proper float format");
                     let float = float * 1000.;
                     tokens.push(Token::Float(float.round() as usize));
@@ -407,14 +459,19 @@ impl ScriptNode {
                         break;
                     }
                     let digit_two = digits.next().expect("hex string to have even length");
-                    hex.push(u8::from_str_radix(&format!("{}{}", digit, digit_two), 16).expect("proper hex format"));
+                    hex.push(
+                        u8::from_str_radix(&format!("{}{}", digit, digit_two), 16)
+                            .expect("proper hex format"),
+                    );
                 }
                 tokens.push(Token::Raw(hex));
                 continue;
             }
             if word.starts_with("Ron(") {
                 let mut ron = String::from(&word[5..]);
-                while ron.matches('(').collect::<Vec<&str>>().len() > ron.matches(')').collect::<Vec<&str>>().len() {
+                while ron.matches('(').collect::<Vec<&str>>().len()
+                    > ron.matches(')').collect::<Vec<&str>>().len()
+                {
                     ron.push_str(words.next().expect("there to be another word"));
                 }
                 if !ron.ends_with(')') {
@@ -431,29 +488,41 @@ impl ScriptNode {
                 continue;
             }
             let token = match word {
-                "==" => {Token::Equals},
-                "!=" => {Token::NotEquals},
-                "<=" => {Token::LestThenEq},
-                ">=" => {Token::GratterThenEq},
-                "<" => {Token::LessThen},
-                ">" => {Token::GratterThen},
-                "+" => {Token::Plus},
-                "-" => {Token::Minus},
-                "*" => {Token::Multiply},
-                "/" => {Token::Divide},
-                "(" => {open += 1; Token::OpenParen(open)},
-                ")" => {closed += 1; Token::CloseParen(closed)},
-                "if" => {Token::If},
-                "else" => {Token::Else},
-                "set" => {Token::Set},
-                "none" => {Token::None},
-                "return" => {Token::Return(NodeId::from_str(words.next().expect("NodeId to follow return")).unwrap())},
-                _ => {Token::Unknown(word.to_string())}
+                "==" => Token::Equals,
+                "!=" => Token::NotEquals,
+                "<=" => Token::LestThenEq,
+                ">=" => Token::GratterThenEq,
+                "<" => Token::LessThen,
+                ">" => Token::GratterThen,
+                "+" => Token::Plus,
+                "-" => Token::Minus,
+                "*" => Token::Multiply,
+                "/" => Token::Divide,
+                "(" => {
+                    open += 1;
+                    Token::OpenParen(open)
+                }
+                ")" => {
+                    closed += 1;
+                    Token::CloseParen(closed)
+                }
+                "if" => Token::If,
+                "else" => Token::Else,
+                "set" => Token::Set,
+                "none" => Token::None,
+                "return" => Token::Return(
+                    NodeId::from_str(words.next().expect("NodeId to follow return")).unwrap(),
+                ),
+                _ => Token::Unknown(word.to_string()),
             };
             tokens.push(token);
         }
 
-        ScriptNode { tokens, tags, fallback }
+        ScriptNode {
+            tokens,
+            tags,
+            fallback,
+        }
     }
 }
 
@@ -462,42 +531,46 @@ fn if_condishion(state: &AnimationState, lhs: &Token, op: &Token, rhs: &Token) -
         (Token::Attribute(id), Token::Int(index)) => {
             let Ok(current) = state.get_attribute::<usize>(id) else {return false;};
             match op {
-            Token::Equals => current == index,
-            Token::NotEquals => current != index,
-            Token::LestThenEq => current <= index,
-            Token::GratterThenEq => current >= index,
-            Token::LessThen => current < index,
-            Token::GratterThen => current > index,
-            _ => panic!("unsupported operator for index")
+                Token::Equals => current == index,
+                Token::NotEquals => current != index,
+                Token::LestThenEq => current <= index,
+                Token::GratterThenEq => current >= index,
+                Token::LessThen => current < index,
+                Token::GratterThen => current > index,
+                _ => panic!("unsupported operator for index"),
             }
         }
         (Token::Attribute(id), Token::Attribute(id2)) => {
             let Ok(id) = state.get_attribute::<usize>(id) else {return false;};
             let Ok(id2) = state.get_attribute::<usize>(id2) else {return false;};
             match op {
-            Token::Equals => id == id2,
-            Token::NotEquals => id != id2,
-            Token::LestThenEq => id <= id2,
-            Token::GratterThenEq => id >= id2,
-            Token::LessThen => id < id2,
-            Token::GratterThen => id > id2,
-            _ => panic!("unsupported operator for index")
+                Token::Equals => id == id2,
+                Token::NotEquals => id != id2,
+                Token::LestThenEq => id <= id2,
+                Token::GratterThenEq => id >= id2,
+                Token::LessThen => id < id2,
+                Token::GratterThen => id > id2,
+                _ => panic!("unsupported operator for index"),
             }
-        },
+        }
         (Token::Attribute(id), Token::None) => match op {
             Token::Equals => state.get_attribute::<usize>(id).is_err(),
             Token::NotEquals => state.get_attribute::<usize>(id).is_ok(),
-            _ => panic!("unsupported operator for index")
+            _ => panic!("unsupported operator for index"),
+        },
+        (Token::Attribute(_), _) => {
+            panic!("unsupported operator for index")
         }
-        (Token::Attribute(_), _) => {panic!("unsupported operator for index")},
-        (_, _) => todo!("unsupported")
+        (_, _) => todo!("unsupported"),
     }
 }
 
 impl LoadNode for ScriptNode {
-    fn load<'b>(s: &str, _: &mut bevy::asset::LoadContext<'b>, _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>) -> Result<crate::AnimationNode, crate::error::LoadError> {
+    fn load<'b>(
+        s: &str,
+        _: &mut bevy::asset::LoadContext<'b>,
+        _dependencies: &mut Vec<bevy::asset::AssetPath<'static>>,
+    ) -> Result<crate::AnimationNode, crate::error::LoadError> {
         Ok(crate::AnimationNode::new(ScriptNode::new(s)))
     }
 }
-
-

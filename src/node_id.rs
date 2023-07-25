@@ -19,27 +19,27 @@ impl Ord for NodeId<'_> {
         use std::cmp::Ordering;
         match (self, other) {
             (NodeId::Name(_, name), NodeId::Name(_, name1)) => name.cmp(name1),
-            (NodeId::Name(_, _), NodeId::U64(_)) |
-            (NodeId::Hash(_), NodeId::U64(_)) |
-            (NodeId::Name(_, _), NodeId::Handle(_)) |
-            (NodeId::U64(_), NodeId::Handle(_)) |
-            (NodeId::Hash(_), NodeId::Handle(_)) |
-            (NodeId::Name(_, _), NodeId::Hash(_)) => Ordering::Greater,
-            (NodeId::Hash(a), NodeId::Hash(b)) |
-            (NodeId::U64(a), NodeId::U64(b)) => a.cmp(b),
+            (NodeId::Name(_, _), NodeId::U64(_))
+            | (NodeId::Hash(_), NodeId::U64(_))
+            | (NodeId::Name(_, _), NodeId::Handle(_))
+            | (NodeId::U64(_), NodeId::Handle(_))
+            | (NodeId::Hash(_), NodeId::Handle(_))
+            | (NodeId::Name(_, _), NodeId::Hash(_)) => Ordering::Greater,
+            (NodeId::Hash(a), NodeId::Hash(b)) | (NodeId::U64(a), NodeId::U64(b)) => a.cmp(b),
             (NodeId::Handle(a), NodeId::Handle(b)) => a.cmp(b),
-            (NodeId::Hash(_), NodeId::Name(_, _)) |
-            (NodeId::U64(_), NodeId::Hash(_)) |
-            (NodeId::U64(_), NodeId::Name(_, _)) |
-            (NodeId::Handle(_), _) => Ordering::Less,
+            (NodeId::Hash(_), NodeId::Name(_, _))
+            | (NodeId::U64(_), NodeId::Hash(_))
+            | (NodeId::U64(_), NodeId::Name(_, _))
+            | (NodeId::Handle(_), _) => Ordering::Less,
         }
     }
 }
 
 impl<'de> serde::Deserialize<'de> for NodeId<'static> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: serde::Deserializer<'de> {
+    where
+        D: serde::Deserializer<'de>,
+    {
         deserializer.deserialize_enum(SERDE_NAME, &["Id", "Name"], NodeVisitor)
     }
 }
@@ -47,13 +47,34 @@ const SERDE_NAME: &'static str = "Node";
 
 impl serde::Serialize for NodeId<'_> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer {
+    where
+        S: serde::Serializer,
+    {
         match self {
-            NodeId::Name(_, name) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), name),
-            NodeId::U64(id) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Id as u32, Variant::Id.as_ref(), id),
-            NodeId::Hash(hash) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Name as u32, Variant::Name.as_ref(), hash),
-            NodeId::Handle(h) => serializer.serialize_newtype_variant(SERDE_NAME, Variant::Handle as u32, Variant::Handle.as_ref(), &h.id()),
+            NodeId::Name(_, name) => serializer.serialize_newtype_variant(
+                SERDE_NAME,
+                Variant::Name as u32,
+                Variant::Name.as_ref(),
+                name,
+            ),
+            NodeId::U64(id) => serializer.serialize_newtype_variant(
+                SERDE_NAME,
+                Variant::Id as u32,
+                Variant::Id.as_ref(),
+                id,
+            ),
+            NodeId::Hash(hash) => serializer.serialize_newtype_variant(
+                SERDE_NAME,
+                Variant::Name as u32,
+                Variant::Name.as_ref(),
+                hash,
+            ),
+            NodeId::Handle(h) => serializer.serialize_newtype_variant(
+                SERDE_NAME,
+                Variant::Handle as u32,
+                Variant::Handle.as_ref(),
+                &h.id(),
+            ),
         }
     }
 }
@@ -72,26 +93,31 @@ impl<'de> serde::de::Visitor<'de> for NodeVisitor {
         formatter.write_str("Expect Variant Id(u64) or Name(String | U64)")
     }
     fn visit_enum<A>(self, data: A) -> Result<Self::Value, A::Error>
-        where
-            A: serde::de::EnumAccess<'de>, {
-                use serde::de::VariantAccess;
+    where
+        A: serde::de::EnumAccess<'de>,
+    {
+        use serde::de::VariantAccess;
         let v = data.variant::<Variant>()?;
         match v.0 {
             Variant::Name => v.1.newtype_variant_seed(NodeVisitor),
             Variant::Id => Ok(NodeId::U64(v.1.newtype_variant::<u64>()?)),
-            Variant::Handle => Ok(NodeId::Handle(Handle::weak(v.1.newtype_variant::<HandleId>()?))),
+            Variant::Handle => Ok(NodeId::Handle(Handle::weak(
+                v.1.newtype_variant::<HandleId>()?,
+            ))),
         }
     }
 
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         Ok(NodeId::Name(get_node_hash(&v), v.into()))
     }
 
     fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
-        where
-            E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         Ok(NodeId::Hash(v as u64))
     }
 
@@ -106,8 +132,9 @@ impl<'de> serde::de::Visitor<'de> for NodeVisitor {
 impl<'de> serde::de::DeserializeSeed<'de> for NodeVisitor {
     type Value = NodeId<'static>;
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-        where
-            D: serde::Deserializer<'de> {
+    where
+        D: serde::Deserializer<'de>,
+    {
         Ok(deserializer.deserialize_any(self).unwrap())
     }
 }
@@ -121,7 +148,7 @@ fn test_serde() {
     assert_eq!(ser_u64, "Id(2)");
     assert_eq!(ser_name, "Name(\"Two\")");
     assert_eq!(ser_hash, "Name(2)");
-    
+
     assert_eq!(Ok(NodeId::U64(2)), ron::from_str(&ser_u64));
     assert_eq!(Ok(NodeId::from_name("Two")), ron::from_str(&ser_name));
     assert_eq!(Ok(NodeId::Hash(2)), ron::from_str(&ser_hash));
@@ -138,10 +165,22 @@ fn assert_eq() {
     let name = NodeId::from_name("Test");
     let name_hash = NodeId::Hash(10729580169200549928);
     assert_eq!(name.to_static(), name);
-    assert_eq!(NodeId::from_name("Test"), NodeId::from_name(String::from("Test")));
-    assert_eq!(NodeId::from_name("Test"), NodeId::Hash(10729580169200549928));
-    assert_eq!(NodeId::Hash(10729580169200549928), NodeId::from_name("Test"));
-    assert_eq!(NodeId::Hash(10729580169200549928), NodeId::Hash(10729580169200549928));
+    assert_eq!(
+        NodeId::from_name("Test"),
+        NodeId::from_name(String::from("Test"))
+    );
+    assert_eq!(
+        NodeId::from_name("Test"),
+        NodeId::Hash(10729580169200549928)
+    );
+    assert_eq!(
+        NodeId::Hash(10729580169200549928),
+        NodeId::from_name("Test")
+    );
+    assert_eq!(
+        NodeId::Hash(10729580169200549928),
+        NodeId::Hash(10729580169200549928)
+    );
     assert_eq!(name.to_static(), NodeId::from_name("Test"));
     assert_eq!(name.to_static(), NodeId::Hash(10729580169200549928));
     assert_eq!(NodeId::from_name("Test"), name.to_static());
@@ -159,23 +198,23 @@ impl Eq for NodeId<'_> {}
 impl PartialEq for NodeId<'_> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (NodeId::U64(id), NodeId::U64(id1)) |
-            (NodeId::Name(id, _), NodeId::Name(id1, _)) |
-            (NodeId::Name(id, _), NodeId::Hash(id1)) |
-            (NodeId::Hash(id), NodeId::Hash(id1)) |
-            (NodeId::Hash(id), NodeId::Name(id1, _)) => id == id1,
+            (NodeId::U64(id), NodeId::U64(id1))
+            | (NodeId::Name(id, _), NodeId::Name(id1, _))
+            | (NodeId::Name(id, _), NodeId::Hash(id1))
+            | (NodeId::Hash(id), NodeId::Hash(id1))
+            | (NodeId::Hash(id), NodeId::Name(id1, _)) => id == id1,
             (NodeId::Handle(h), NodeId::Handle(h1)) => h == h1,
-            _ => false
+            _ => false,
         }
     }
 }
 
 impl std::fmt::Display for NodeId<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       match self {
-            NodeId::Name(_, name) =>  f.write_fmt(format_args!("NodeName(\"{}\")", name)),
-            NodeId::U64(id) =>  f.write_fmt(format_args!("NodeId({})", id)),
-            NodeId::Hash(id) =>  f.write_fmt(format_args!("NodeName({})", id)),
+        match self {
+            NodeId::Name(_, name) => f.write_fmt(format_args!("NodeName(\"{}\")", name)),
+            NodeId::U64(id) => f.write_fmt(format_args!("NodeId({})", id)),
+            NodeId::Hash(id) => f.write_fmt(format_args!("NodeName({})", id)),
             NodeId::Handle(_) => f.write_str("NodeHandle()"),
         }
     }
@@ -205,14 +244,16 @@ impl From<NodeId<'_>> for bevy::asset::HandleId {
 
 use std::borrow::Cow;
 
-use bevy::{reflect::Reflect, prelude::Handle, asset::HandleId};
+use bevy::{asset::HandleId, prelude::Handle, reflect::Reflect};
 
 impl std::str::FromStr for NodeId<'_> {
     type Err = ron::error::SpannedError; //todo!
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-            let mut data = s.trim();
-            if let Some(new) = data.strip_prefix("Node::") {data = new;};
-            ron::from_str(data)
+        let mut data = s.trim();
+        if let Some(new) = data.strip_prefix("Node::") {
+            data = new;
+        };
+        ron::from_str(data)
     }
 }
 
@@ -256,26 +297,29 @@ impl NodeId<'_> {
             NodeId::Handle(id) => {
                 match id.id() {
                     HandleId::AssetPathId(id) => {
-                        let name = format!("h_{:?}", id.source_path_id()).replace("SourcePathId(", "").replace(')', "");
+                        let name = format!("h_{:?}", id.source_path_id())
+                            .replace("SourcePathId(", "")
+                            .replace(')', "");
                         out.push_str(&name)
-                    },
+                    }
                     HandleId::Id(_, _) => handle_to_node(id.id()).dot(out),
                 };
-            },
+            }
             NodeId::U64(id) => out.push_str(&format!("u_{}", id)),
-            NodeId::Name(id, _) |
-            NodeId::Hash(id) => out.push_str(&format!("n_{}", id)),
+            NodeId::Name(id, _) | NodeId::Hash(id) => out.push_str(&format!("n_{}", id)),
         }
-    } 
+    }
 }
 
-pub (crate) fn handle_to_node(handle: HandleId) -> NodeId<'static> {
+pub(crate) fn handle_to_node(handle: HandleId) -> NodeId<'static> {
     match handle {
-        HandleId::Id(uu, id) => if uu == NodeId::FROM_NAME {
-            NodeId::Hash(id)
-        } else {
-            NodeId::U64(id)
-        },
+        HandleId::Id(uu, id) => {
+            if uu == NodeId::FROM_NAME {
+                NodeId::Hash(id)
+            } else {
+                NodeId::U64(id)
+            }
+        }
         HandleId::AssetPathId(_) => NodeId::Handle(Handle::weak(handle)),
     }
 }
